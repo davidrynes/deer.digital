@@ -3247,7 +3247,18 @@ a {
 
 @media screen and (max-width: 991px) {
   .grid-main {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -webkit-flex-direction: column;
+    -ms-flex-direction: column;
+    flex-direction: column;
     justify-items: stretch;
+    -ms-grid-columns: 3fr;
+    grid-template-columns: 3fr;
   }
 
   .logo-holder {
@@ -3620,12 +3631,13 @@ a {
 
 @media screen and (max-width: 479px) {
   .text-block.css-selector {
-    font-size: 5em;
+    font-size: 3em;
   }
 
   .content-container.services {
     padding-right: 10px;
     padding-left: 10px;
+    font-size: 8px;
   }
 
   .services-nav {
@@ -3643,11 +3655,15 @@ a {
 
   .text-about {
     margin-bottom: 20px;
-    font-size: 1.6em;
+    font-size: 1.2em;
+  }
+
+  .stav {
+    border-radius: 20px;
   }
 
   .text-status {
-    font-size: 1.2em;
+    font-size: 1em;
   }
 
   .link {
@@ -3715,7 +3731,15 @@ a {
   }
 
   .header--wrapper {
+    display: block;
     min-height: auto;
+    padding-right: 1.5em;
+    padding-left: 1.5em;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -webkit-flex-direction: column;
+    -ms-flex-direction: column;
+    flex-direction: column;
   }
 
   .paragraph {
@@ -4105,6 +4129,19 @@ a {
     -ms-flex-item-align: center;
     -ms-grid-row-align: center;
     align-self: center;
+  }
+}
+
+@media screen and (max-width: 479px) {
+  #w-node-_32408628-ceaf-054e-75f8-c07e5ce9053d-40a4e69f {
+    -ms-grid-row: span 1;
+    grid-row-start: span 1;
+    -ms-grid-row-span: 1;
+    grid-row-end: span 1;
+    -ms-grid-column: span 1;
+    grid-column-start: span 1;
+    -ms-grid-column-span: 1;
+    grid-column-end: span 1;
   }
 }
 
