@@ -3568,8 +3568,17 @@ a {
     line-height: 1.6;
   }
 
+  .button-container {
+    margin-top: 2.5rem;
+  }
+
   .hello-text {
     font-weight: 700;
+  }
+
+  .one-col-cont {
+    padding-right: 3em;
+    padding-left: 3em;
   }
 
   .heading-h2 {
@@ -3584,9 +3593,22 @@ a {
     font-size: 1.2em;
   }
 
+  .grid-100 {
+    padding: 3rem;
+  }
+
+  .content-cont {
+    padding-right: 3rem;
+    padding-left: 3rem;
+  }
+
   .h4-heading {
     margin-top: 20px;
     font-size: 2em;
+  }
+
+  .profil-foto {
+    max-height: none;
   }
 
   .content-section-copy {
@@ -3620,6 +3642,7 @@ a {
   }
 
   .header--wrapper {
+    min-height: auto;
     -webkit-box-orient: vertical;
     -webkit-box-direction: normal;
     -webkit-flex-direction: column;
@@ -3641,7 +3664,7 @@ a {
 
   .services-nav {
     margin-bottom: 0px;
-    font-size: 1.7em;
+    font-size: 2.4em;
   }
 
   .text-span {
@@ -3654,7 +3677,7 @@ a {
 
   .text-about {
     margin-bottom: 20px;
-    font-size: 1.2em;
+    font-size: 1em;
   }
 
   .stav {
@@ -3662,7 +3685,7 @@ a {
   }
 
   .text-status {
-    font-size: 1em;
+    font-size: 0.8em;
   }
 
   .link {
@@ -3693,16 +3716,24 @@ a {
 
   .hello-text {
     margin-top: 10px;
-    font-size: 1.6em;
+    font-size: 1.2em;
+  }
+
+  .paragraph-text {
+    font-size: 1em;
   }
 
   .paragraph-text.perex {
     font-size: 1em;
   }
 
+  .heading-h3 {
+    font-size: 1.2em;
+  }
+
   .cta-text.fade-up.tricks {
     margin-top: 10px;
-    font-size: 1.6em;
+    font-size: 1.2em;
     font-weight: 700;
   }
 
@@ -3717,6 +3748,11 @@ a {
   .cta-2-text {
     margin-top: 10px;
     font-size: 1em;
+  }
+
+  .grid-cards {
+    padding-right: 1.5em;
+    padding-left: 1.5em;
   }
 
   .tabs-content {
@@ -3743,6 +3779,10 @@ a {
 
   .paragraph {
     font-size: 1em;
+  }
+
+  .text-block-7 {
+    font-size: 0.8em;
   }
 }
 
