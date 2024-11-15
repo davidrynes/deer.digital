@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHANCE LIGA - SKORE</title>
+    <link rel="preload" href="css/TT-Supermolot-Black.ttf" as="font" type="font/ttf" crossorigin="anonymous">
+    <style>
+@font-face {
+    font-family: 'TT Supermolot Black';
+    src: url('css/TT-Supermolot-Black.ttf') format('truetype');
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    height: 100%;
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#container {
+    width: 90%;
+    max-width: 1200px; /* Zvětšeno pro lepší využití horizontálního prostoru */
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap; /* Povoluje, aby prvky přecházely na nový řádek pokud je to potřeba */
+    width: 100%; /* Plná šířka kontejneru pro lepší využití prostoru */
+    margin-bottom: 10px;
+}
+
+.section > div {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-right: 20px; /* Přidáno pro oddělení prvků v řadě */
+    flex: 1 1 45%; /* Každý prvek zabírá alespoň 45% šířky, může se rozšiřovat */
+}
+
+.section label {
+    margin-right: 10px;
+    white-space: nowrap; /* Zajistí, že text labelu zůstane na jedné řádce */
+}
+
+input[type="text"], input[type="number"], select {
+    flex-grow: 1;
+    padding: 8px;
+    border: 2px solid #ccc;
+    border-radius: 4px;
+    transition: border-color 0.3s;
+}
+
+input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    border-color: #007BFF;
+}
+
+.button-row {
+    width: 100%;
+    text-align: center;
+    margin-top: 20px;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+#canvas {
+    width: 100%;  /* Zajistí, že šířka canvas bude vždy 100% rodičovského elementu */
+    max-width: 1920px;  /* Maximální šířka, aby se nezvětšoval nad rámec originální velikosti */
+    height: auto;  /* Výška se automaticky nastaví podle původního poměru stran */
+    max-height: 1080px;  /* Maximální výška */
+    border: 1px solid #ccc;
+    margin-top: 20px;
+    display: block;  /* Zajišťuje, že canvas bude blokový element */
+}
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1 style="text-align: center; margin-bottom: 20px;">EXTRALIGA - SKORE</h1>
+        <div class="section">
+            <div>
+                <label for="backgroundSelect">Pozadí:</label>
+                <select id="backgroundSelect" onchange="updateImage()">
+                    <option value="bg/00.png">Světlé</option>
+                </select>
+            </div>
+            <div>
+                <input type="checkbox" id="scoreEnabled" checked onchange="updateImage()">
+                <label for="scoreEnabled">Zobrazit skóre</label>
+            </div>
+            <div>
+                <input type="checkbox" id="scoreOnly" onchange="updateImage()">
+                <label for="scoreOnly">Pouze skóre</label>
+            </div>
+            <div>
+                <input type="checkbox" id="largerText" onchange="updateImage()">
+                <label for="largerText">VĚTŠÍ TEXT</label>
+            </div>
+        </div>
+        <div class="section">
+            <div>
+                <label for="homeTeam">Domácí tým:</label>
+                <select id="homeTeam" onchange="updateImage()">
+                <option value="budejovice">Banes Motor Č. Budějovice</option>
+                <option value="hradec">Mountfield HK</option>
+                <option value="vitkovice">HC VÍTKOVICE RIDERA</option>
+                <option value="litvinov">HC VERVA Litvínov</option>
+                <option value="plzen">HC Škoda Plzeň</option>
+                <option value="sparta">HC Sparta Praha</option>
+                <option value="olomouc">HC Olomouc</option>
+                <option value="trinec">HC Oceláři Třinec</option>
+                <option value="brno">HC Kometa Brno</option>
+                <option value="vary">HC Energie Karlovy Vary</option>
+                <option value="pardubice">HC Dynamo Pardubice</option>
+                <option value="boleslav">BK Mladá Boleslav</option>
+                <option value="liberec">Bílí Tygři Liberec</option>
+                <option value="kladno">Rytíři Kladno</option>
+            </select>
+        </div>
+        <div>
+            <label for="awayTeam">Hostující tým:</label>
+            <select id="awayTeam" onchange="updateImage()">
+                <option value="budejovice">Banes Motor Č. Budějovice</option>
+                <option value="hradec">Mountfield HK</option>
+                <option value="vitkovice">HC VÍTKOVICE RIDERA</option>
+                <option value="litvinov">HC VERVA Litvínov</option>
+                <option value="plzen">HC Škoda Plzeň</option>
+                <option value="sparta">HC Sparta Praha</option>
+                <option value="olomouc">HC Olomouc</option>
+                <option value="trinec">HC Oceláři Třinec</option>
+                <option value="brno">HC Kometa Brno</option>
+                <option value="vary">HC Energie Karlovy Vary</option>
+                <option value="pardubice">HC Dynamo Pardubice</option>
+                <option value="boleslav">BK Mladá Boleslav</option>
+                <option value="liberec">Bílí Tygři Liberec</option>
+                <option value="kladno">Rytíři Kladno</option>
+            </select>
+        </div>
+        <div class="section">
+            <div>
+                <label for="homeScore">Skóre domácí:</label>
+                <input type="number" id="homeScore" min="0" max="15" value="0" oninput="updateImage()">
+            </div>
+            <div>
+                <label for="awayScore">Skóre hosté:</label>
+                <input type="number" id="awayScore" min="0" max="15" value="0" oninput="updateImage()">
+            </div>
+        </div>
+        <div class="section">
+            <div>
+                <label for="additionalText">Text pod skóre:</label>
+                <input type="text" id="additionalText" oninput="updateImage()">
+            </div>
+            <div>
+                <label for="moreText">Další text:</label>
+                <input type="text" id="moreText" value="SESTŘIH UTKÁNÍ" oninput="updateImage()">
+            </div>
+        </div>
+        <div class="button-row">
+            <button onclick="downloadImage()">Stáhnout obrázek</button></div>
+        <canvas id="canvas" width="1920" height="1080"></canvas>
+
+    
+    <script>
+        const logos = {
+            brno: 'logo/brno.png',
+            budejovice: 'logo/ceske-budejovice.png',
+            hradec: 'logo/hradec-kralove.png',
+            vary: 'logo/karlovy-vary.png',
+            kladno: 'logo/kladno.png',
+            liberec: 'logo/liberec.png',
+            litvinov: 'logo/litvinov.png',
+            boleslav: 'logo/mlada-boleslav.png',
+            olomouc: 'logo/olomouc.png',
+            pardubice: 'logo/pardubice.png',
+            plzen: 'logo/plzen.png',
+            sparta: 'logo/sparta-praha.png',
+            trinec: 'logo/trinec.png',
+            vitkovice: 'logo/vitkovice.png',
+        };
+    
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('scoreOnly').checked = true;  // Výchozí zaškrtnutí
+            updateImage();  // Zajištění aktualizace obrázku po načtení stránky
+        });
+    
+        function updateImage() {
+    const canvas = document.getElementById('canvas');
+    if (!canvas) {
+        console.error('Canvas element is not found!');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas for new drawing
+
+    const bgImage = new Image();
+    bgImage.src = document.getElementById('backgroundSelect').value;
+
+    bgImage.onload = () => {
+        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+
+        const homeTeam = document.getElementById('homeTeam').value;
+        const awayTeam = document.getElementById('awayTeam').value;
+        const homeLogo = new Image();
+        const awayLogo = new Image();
+        homeLogo.src = logos[homeTeam];
+        awayLogo.src = logos[awayTeam];
+
+        homeLogo.onload = () => {
+            // Nastavení stínu pro logo domácího týmu
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 200;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.drawImage(homeLogo, 240, 140, 600, 600);
+        };
+
+        awayLogo.onload = () => {
+            // Nastavení stínu pro logo hostujícího týmu
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 200;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.drawImage(awayLogo, 1080, 140, 600, 600);
+        };
+
+        renderScores(ctx);
+    };
+}
+    
+function renderScores(ctx) {
+    const canvas = document.getElementById('canvas');
+    const homeScore = document.getElementById('homeScore').value;
+    const awayScore = document.getElementById('awayScore').value;
+    const scoreEnabled = document.getElementById('scoreEnabled').checked;
+    const scoreOnly = document.getElementById('scoreOnly').checked;
+    const additionalText = document.getElementById('additionalText').value;
+    const moreText = document.getElementById('moreText').value;
+    const largerText = document.getElementById('largerText').checked;
+
+    const midX = canvas.width / 2;
+    let scoreY = 750; 
+    let scoreFontSize = 220;
+    let moreTextY = 990; 
+    let moreTextSize = 140; 
+
+    if (scoreOnly) {
+        scoreFontSize = 360;
+        scoreY = 960;
+        moreTextY = 1400;
+
+        ctx.font = `${scoreFontSize}px "TT Supermolot Black"`;
+        ctx.fillStyle = '#fafafa';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${homeScore}:${awayScore}`, midX, scoreY);
+
+    } else if (scoreEnabled) {
+        ctx.font = `${scoreFontSize}px "TT Supermolot Black"`;
+        ctx.fillStyle = '#fafafa';
+        ctx.textAlign = 'right';
+        ctx.fillText(homeScore, midX - 35, scoreY);
+
+        ctx.textAlign = 'center';
+        ctx.fillText(':', midX, scoreY);
+
+        ctx.textAlign = 'left';
+        ctx.fillText(awayScore, midX + 35, scoreY);
+
+        ctx.font = '100px "TT Supermolot Black"';
+        ctx.textAlign = 'center';
+        ctx.fillText(additionalText, midX, scoreY + 100);
+    } else {
+        moreTextY = 1000;
+    }
+
+    if (largerText) {
+        moreTextSize = 300;
+    }
+
+    if (!scoreOnly) {
+        ctx.font = `${moreTextSize}px "TT Supermolot Black"`;
+        ctx.textAlign = 'center';
+        ctx.fillText(moreText, midX, moreTextY);
+    }
+}
+    
+        function downloadImage() {
+            const canvas = document.getElementById('canvas');
+            if (!canvas) {
+                console.error('Canvas element is not found!');
+                return;
+            }
+            const link = document.createElement('a');
+            link.download = 'hokejova_grafika.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>

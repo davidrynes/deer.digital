@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="preload" href="/css/TT-Supermolot-Black.ttf" as="font" type="font/ttf" crossorigin="anonymous">
+    <title>CHANCE LIGA - SKORE</title>
+    <style>
+        @font-face {
+            font-family: 'TT Supermolot Black';
+            src: url('css/TT-Supermolot-Black.ttf') format('truetype');
+        }
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f4f4f4;
+        }
+        #container {
+            width: 80%;
+            margin: auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        #canvas {
+            width: 100%;
+            height: auto;
+            max-height: 600px;
+            border: 1px solid #ccc;
+            margin-top: 20px;
+        }
+        label, select, input, button {
+            margin: 10px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        select, input {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>CHANCE LIGA - SKORE</h1>
+        <div>
+            <label for="backgroundSelect">Pozadí:</label>
+            <select id="backgroundSelect" onchange="updateImage()">
+                <option value="bg/bg-fotbal-light.png">Světlé</option>
+                <option value="bg/bg-fotbal-dark.png">Tmavé</option>
+            </select>
+        </div>
+        <div>
+            <label for="homeTeam">Domácí tým:</label>
+            <select id="homeTeam" onchange="updateImage()">
+                <option value="bohemians">Bohemians</option>
+                <option value="budejovice">České Budějovice</option>
+                <option value="dukla">Dukla Praha</option>
+                <option value="hradec">Hradec Králové</option>
+                <option value="jablonec">Jablonec</option>
+                <option value="karvina">Karviná</option>
+                <option value="liberec">Liberec</option>
+                <option value="boleslav">Mladá Boleslav</option>
+                <option value="olomouc">Olomouc</option>
+                <option value="ostrava">Ostrava</option>
+                <option value="pardubice">Pardubice</option>
+                <option value="plzen">Plzeň</option>
+                <option value="slavia">Slavia</option>
+                <option value="slovacko">Slovácko</option>
+                <option value="sparta">Sparta</option>
+                <option value="teplice">Teplice</option>
+                <!-- Přidejte další možnosti pro každý tým -->
+            </select>
+        </div>
+        <div>
+            <label for="awayTeam">Hostující tým:</label>
+            <select id="awayTeam" onchange="updateImage()">
+                <option value="bohemians">Bohemians</option>
+                <option value="budejovice">České Budějovice</option>
+                <option value="dukla">Dukla Praha</option>
+                <option value="hradec">Hradec Králové</option>
+                <option value="jablonec">Jablonec</option>
+                <option value="karvina">Karviná</option>
+                <option value="liberec">Liberec</option>
+                <option value="boleslav">Mladá Boleslav</option>
+                <option value="olomouc">Olomouc</option>
+                <option value="ostrava">Ostrava</option>
+                <option value="pardubice">Pardubice</option>
+                <option value="plzen">Plzeň</option>
+                <option value="slavia">Slavia</option>
+                <option value="slovacko">Slovácko</option>
+                <option value="sparta">Sparta</option>
+                <option value="teplice">Teplice</option>
+                <!-- Přidejte další možnosti pro každý tým -->
+            </select>
+        </div>
+        <div>
+            <label for="homeScore">Skóre domácí:</label>
+            <input type="number" id="homeScore" min="0" max="10" value="0" oninput="updateImage()">
+        </div>
+        <div>
+            <label for="awayScore">Skóre hosté:</label>
+            <input type="number" id="awayScore" min="0" max="10" value="0" oninput="updateImage()">
+        </div>
+        <button onclick="downloadImage()">Stáhnout obrázek</button>
+        <canvas id="canvas" width="1920" height="1080"></canvas>
+    </div>
+    <script>
+        const logos = {
+            bohemians: 'logo/bohemians.png',
+            budejovice: 'logo/budejovice.png',
+            dukla: 'logo/dukla.png',
+            hradec: 'logo/hradec.png',
+            jablonec: 'logo/jablonec.png',
+            karvina: 'logo/karvina.png',
+            liberec: 'logo/liberec.png',
+            boleslav: 'logo/boleslav.png',
+            olomouc: 'logo/olomouc.png',
+            ostrava: 'logo/ostrava.png',
+            pardubice: 'logo/pardubice.png',
+            plzen: 'logo/plzen.png',
+            slavia: 'logo/slavia.png',
+            slovacko: 'logo/slovacko.png',
+            sparta: 'logo/sparta.png',
+            teplice: 'logo/teplice.png',
+            // Přidejte cesty k logům pro další týmy
+        };
+
+        function updateImage() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas for new drawing
+
+            const bgImage = new Image();
+            bgImage.src = document.getElementById('backgroundSelect').value;
+
+            bgImage.onload = () => {
+                ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+
+                const homeTeam = document.getElementById('homeTeam').value;
+                const awayTeam = document.getElementById('awayTeam').value;
+                const homeLogo = new Image();
+                const awayLogo = new Image();
+                homeLogo.src = logos[homeTeam];
+                awayLogo.src = logos[awayTeam];
+
+                homeLogo.onload = () => {
+                    ctx.drawImage(homeLogo, 320, 380, 425, 425);
+                };
+
+                awayLogo.onload = () => {
+                    ctx.drawImage(awayLogo, 1180, 380, 425, 425);
+                };
+
+                renderScores(ctx);
+            };
+        }
+
+        function renderScores(ctx) {
+    const homeScore = document.getElementById('homeScore').value;
+    const awayScore = document.getElementById('awayScore').value;
+    const midX = canvas.width / 2;
+    const scoreY = 600; // Upravit dle potřeby
+
+    ctx.font = '150px "TT Supermolot Black"';
+    ctx.fillStyle = '#161f73';
+    ctx.textAlign = 'right';
+    ctx.fillText(homeScore, midX - 35, scoreY);
+
+    ctx.textAlign = 'center';
+    ctx.fillText(':', midX, scoreY);
+
+    ctx.textAlign = 'left';
+    ctx.fillText(awayScore, midX + 35, scoreY);
+}
+
+        function downloadImage() {
+            const canvas = document.getElementById('canvas');
+            const link = document.createElement('a');
+            link.download = 'fotbalova_grafika.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        updateImage();
+    </script>
+</body>
+</html>
