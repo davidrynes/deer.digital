@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crawl - Volby 2021 (Live API)</title>
+    <title>Crawl - Volby 2021 (Modern Light Design)</title>
     <style>
-        body {
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
             background: transparent;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             overflow: hidden;
             height: 100vh;
         }
@@ -19,9 +23,10 @@
             bottom: 0;
             left: 0;
             width: 100%;
-            height: 80px;
-            background: rgba(0, 0, 0, 0.7);
+            height: 100px;
+            background: linear-gradient(90deg, #fafafa 0%, #ffffff 100%);
             overflow: hidden;
+            border-top: 1px solid #e0e0e0;
         }
 
         .crawl-content {
@@ -29,72 +34,187 @@
             align-items: center;
             height: 100%;
             white-space: nowrap;
-            animation: scroll-left 90s linear infinite;
+            animation: scroll-left 120s linear infinite;
+            padding: 12px 0;
         }
 
         .party-block {
             display: inline-flex;
             align-items: center;
-            margin: 0 20px;
-            padding: 10px 15px;
-            border-radius: 8px;
-            color: white;
-            font-weight: bold;
-            font-size: 16px;
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-            min-width: 200px;
+            margin: 0 8px;
+            padding: 0;
+            color: #333;
+            min-width: 320px;
+            height: 76px;
+            position: relative;
+            background: #ffffff;
+            border: 1px solid #e5e5e5;
+            overflow: hidden;
+        }
+
+        /* Barevný accent bar vlevo */
+        .party-accent {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 6px;
+        }
+
+        /* Hlavní obsah bloku */
+        .party-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 20px 0 20px;
+            gap: 15px;
+        }
+
+        /* Levá část - název strany */
+        .party-left {
+            display: flex;
+            flex-direction: column;
             justify-content: center;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            min-width: 100px;
         }
 
         .party-name {
-            margin-right: 15px;
-            font-size: 18px;
-        }
-
-        .party-stats {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-
-        .party-percent {
-            font-size: 20px;
-            font-weight: bold;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+            color: #222;
         }
 
         .party-votes {
-            font-size: 12px;
-            opacity: 0.9;
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+            font-weight: 500;
         }
 
-        .separator {
-            margin: 0 40px;
-            color: white;
+        /* Střední část - procenta */
+        .party-center {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .party-percent-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: #111;
+            line-height: 1;
+        }
+
+        .party-percent-sign {
+            font-size: 20px;
+            font-weight: 600;
+            color: #999;
+        }
+
+        /* Pravá část - mandáty */
+        .party-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f5f5f5;
+            padding: 8px 12px;
+            min-width: 70px;
+        }
+
+        .mandates-number {
             font-size: 24px;
-            opacity: 0.7;
+            font-weight: 800;
+            color: #111;
+            line-height: 1;
         }
 
+        .mandates-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+            font-weight: 600;
+        }
+
+        /* Speciální styl pro strany bez mandátů */
+        .no-mandates .mandates-number {
+            color: #aaa;
+        }
+
+        .no-mandates .party-right {
+            background: #fafafa;
+        }
+
+        /* Divider mezi opakováními */
+        .divider {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 76px;
+        }
+
+        .divider-dot {
+            width: 4px;
+            height: 4px;
+            background: #ccc;
+            border-radius: 50%;
+            margin: 0 3px;
+        }
+
+        /* Loading state */
         .loading {
-            color: white;
+            color: #666;
             text-align: center;
             padding: 30px;
-            font-size: 18px;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
         }
 
+        /* Animace */
         @keyframes scroll-left {
             0% {
-                transform: translateX(100%);
+                transform: translateX(0);
             }
             100% {
                 transform: translateX(-100%);
             }
         }
 
-        /* Vylepšené vizuální efekty */
+        /* Hover efekt - jemný */
+        .party-block {
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+
         .party-block:hover {
-            transform: scale(1.05);
-            transition: transform 0.3s ease;
+            background: #f8f8f8;
+            transform: translateY(-2px);
+        }
+
+        /* Responsivní úpravy */
+        @media (max-width: 768px) {
+            .crawl-container {
+                height: 90px;
+            }
+            
+            .party-block {
+                min-width: 280px;
+                height: 66px;
+            }
+            
+            .party-percent-value {
+                font-size: 28px;
+            }
+            
+            .mandates-number {
+                font-size: 20px;
+            }
         }
     </style>
 </head>
@@ -124,22 +244,23 @@
                         shortName8: party.shortName8,
                         votesPercent: party.votesPercent,
                         votes: party.votes,
+                        numOfMandates: party.numOfMandates,
                         color: party.vParty.color
                     }))
-                    .sort((a, b) => b.votesPercent - a.votesPercent); // Seřadit podle % zisků
+                    .sort((a, b) => b.votesPercent - a.votesPercent);
                 
                 generateCrawlContent();
             } catch (error) {
                 console.error('Chyba při načítání dat:', error);
                 // Fallback na statická data
                 electionData = [
-                    { "shortName8": "SPOLU", "votesPercent": 27.79, "votes": 1493905, "color": "#4175e0" },
-                    { "shortName8": "ANO", "votesPercent": 27.12, "votes": 1458140, "color": "#33cccc" },
-                    { "shortName8": "Piráti+STAN", "votesPercent": 15.62, "votes": 839776, "color": "#222222" },
-                    { "shortName8": "SPD", "votesPercent": 9.56, "votes": 513910, "color": "#c05f2f" },
-                    { "shortName8": "PŘÍSAHA", "votesPercent": 4.68, "votes": 251562, "color": "#0240c6" },
-                    { "shortName8": "ČSSD", "votesPercent": 4.65, "votes": 250397, "color": "#f9932e" },
-                    { "shortName8": "KSČM", "votesPercent": 3.60, "votes": 193817, "color": "#e2354b" }
+                    { "shortName8": "SPOLU", "votesPercent": 27.79, "votes": 1493905, "numOfMandates": 71, "color": "#4175e0" },
+                    { "shortName8": "ANO", "votesPercent": 27.12, "votes": 1458140, "numOfMandates": 72, "color": "#26d0ce" },
+                    { "shortName8": "Piráti+STAN", "votesPercent": 15.62, "votes": 839776, "numOfMandates": 37, "color": "#5c5c5c" },
+                    { "shortName8": "SPD", "votesPercent": 9.56, "votes": 513910, "numOfMandates": 20, "color": "#ee6c4d" },
+                    { "shortName8": "PŘÍSAHA", "votesPercent": 4.68, "votes": 251562, "numOfMandates": 0, "color": "#0066ff" },
+                    { "shortName8": "ČSSD", "votesPercent": 4.65, "votes": 250397, "numOfMandates": 0, "color": "#ff6b35" },
+                    { "shortName8": "KSČM", "votesPercent": 3.60, "votes": 193817, "numOfMandates": 0, "color": "#ef476f" }
                 ];
                 generateCrawlContent();
             }
@@ -149,23 +270,42 @@
             const crawlElement = document.getElementById('crawl');
             let content = '';
             
-            // Vytvořit několik opakování pro kontinuální crawl
-            for (let repeat = 0; repeat < 3; repeat++) {
+            // Vytvořit více opakování pro kontinuální crawl bez uřezávání
+            for (let repeat = 0; repeat < 5; repeat++) {
                 electionData.forEach(party => {
+                    const noMandatesClass = party.numOfMandates === 0 ? 'no-mandates' : '';
+                    const percentValue = party.votesPercent.toFixed(2).split('.');
+                    
                     content += `
-                        <div class="party-block" style="background-color: ${party.color}">
-                            <div class="party-name">${party.shortName8}</div>
-                            <div class="party-stats">
-                                <div class="party-percent">${party.votesPercent}%</div>
-                                <div class="party-votes">${formatNumber(party.votes)} hlasů</div>
+                        <div class="party-block ${noMandatesClass}">
+                            <div class="party-accent" style="background-color: ${party.color}"></div>
+                            <div class="party-content">
+                                <div class="party-left">
+                                    <div class="party-name">${party.shortName8}</div>
+                                    <div class="party-votes">${formatNumber(party.votes)} hlasů</div>
+                                </div>
+                                <div class="party-center">
+                                    <span class="party-percent-value">${percentValue[0]}.${percentValue[1]}</span>
+                                    <span class="party-percent-sign">%</span>
+                                </div>
+                                <div class="party-right">
+                                    <div class="mandates-number">${party.numOfMandates}</div>
+                                    <div class="mandates-label">mandátů</div>
+                                </div>
                             </div>
                         </div>
                     `;
                 });
                 
                 // Přidat oddělovač mezi opakování
-                if (repeat < 2) {
-                    content += '<div class="separator">•</div>';
+                if (repeat < 4) {
+                    content += `
+                        <div class="divider">
+                            <span class="divider-dot"></span>
+                            <span class="divider-dot"></span>
+                            <span class="divider-dot"></span>
+                        </div>
+                    `;
                 }
             }
             
@@ -175,7 +315,7 @@
         // Spustit načítání dat po načtení stránky
         document.addEventListener('DOMContentLoaded', loadElectionData);
         
-        // Aktualizovat data každých 30 sekund (pro případné aktualizace)
+        // Aktualizovat data každých 30 sekund
         setInterval(loadElectionData, 30000);
     </script>
 </body>
