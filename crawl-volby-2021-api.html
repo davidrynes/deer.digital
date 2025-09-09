@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crawl - Volby 2021 (Live API)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .crawl-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.7);
+            overflow: hidden;
+        }
+
+        .crawl-content {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            white-space: nowrap;
+            animation: scroll-left 90s linear infinite;
+        }
+
+        .party-block {
+            display: inline-flex;
+            align-items: center;
+            margin: 0 20px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            min-width: 200px;
+            justify-content: center;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .party-name {
+            margin-right: 15px;
+            font-size: 18px;
+        }
+
+        .party-stats {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .party-percent {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .party-votes {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .separator {
+            margin: 0 40px;
+            color: white;
+            font-size: 24px;
+            opacity: 0.7;
+        }
+
+        .loading {
+            color: white;
+            text-align: center;
+            padding: 30px;
+            font-size: 18px;
+        }
+
+        @keyframes scroll-left {
+            0% {
+                transform: translateX(100%);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        /* Vylepšené vizuální efekty */
+        .party-block:hover {
+            transform: scale(1.05);
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="crawl-container">
+        <div class="crawl-content" id="crawl">
+            <div class="loading">Načítám volební výsledky...</div>
+        </div>
+    </div>
+
+    <script>
+        let electionData = [];
+
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        }
+
+        async function loadElectionData() {
+            try {
+                const response = await fetch('https://api.elections.seznam.cz/parliament/2021/results/cr');
+                const data = await response.json();
+                
+                // Filtrovat pouze strany s mandáty nebo významným ziskem (více než 1%)
+                electionData = data._items
+                    .filter(party => party.votesPercent >= 1.0)
+                    .map(party => ({
+                        shortName8: party.shortName8,
+                        votesPercent: party.votesPercent,
+                        votes: party.votes,
+                        color: party.vParty.color
+                    }))
+                    .sort((a, b) => b.votesPercent - a.votesPercent); // Seřadit podle % zisků
+                
+                generateCrawlContent();
+            } catch (error) {
+                console.error('Chyba při načítání dat:', error);
+                // Fallback na statická data
+                electionData = [
+                    { "shortName8": "SPOLU", "votesPercent": 27.79, "votes": 1493905, "color": "#4175e0" },
+                    { "shortName8": "ANO", "votesPercent": 27.12, "votes": 1458140, "color": "#33cccc" },
+                    { "shortName8": "Piráti+STAN", "votesPercent": 15.62, "votes": 839776, "color": "#222222" },
+                    { "shortName8": "SPD", "votesPercent": 9.56, "votes": 513910, "color": "#c05f2f" },
+                    { "shortName8": "PŘÍSAHA", "votesPercent": 4.68, "votes": 251562, "color": "#0240c6" },
+                    { "shortName8": "ČSSD", "votesPercent": 4.65, "votes": 250397, "color": "#f9932e" },
+                    { "shortName8": "KSČM", "votesPercent": 3.60, "votes": 193817, "color": "#e2354b" }
+                ];
+                generateCrawlContent();
+            }
+        }
+
+        function generateCrawlContent() {
+            const crawlElement = document.getElementById('crawl');
+            let content = '';
+            
+            // Vytvořit několik opakování pro kontinuální crawl
+            for (let repeat = 0; repeat < 3; repeat++) {
+                electionData.forEach(party => {
+                    content += `
+                        <div class="party-block" style="background-color: ${party.color}">
+                            <div class="party-name">${party.shortName8}</div>
+                            <div class="party-stats">
+                                <div class="party-percent">${party.votesPercent}%</div>
+                                <div class="party-votes">${formatNumber(party.votes)} hlasů</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Přidat oddělovač mezi opakování
+                if (repeat < 2) {
+                    content += '<div class="separator">•</div>';
+                }
+            }
+            
+            crawlElement.innerHTML = content;
+        }
+
+        // Spustit načítání dat po načtení stránky
+        document.addEventListener('DOMContentLoaded', loadElectionData);
+        
+        // Aktualizovat data každých 30 sekund (pro případné aktualizace)
+        setInterval(loadElectionData, 30000);
+    </script>
+</body>
+</html>
