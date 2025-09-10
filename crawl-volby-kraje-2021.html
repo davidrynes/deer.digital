@@ -179,13 +179,13 @@
             letter-spacing: 0.5px;
         }
 
-        /* Animace */
-        @keyframes scroll-left {
+        /* Animace - bude se nastavovat dynamicky v JavaScript */
+        @keyframes scroll-left-dynamic {
             0% {
                 transform: translateX(100%); /* Začíná vpravo */
             }
             100% {
-                transform: translateX(-100%); /* Končí vlevo (úplně zmizí) */
+                /* Konec se nastavuje dynamicky aby poslední prvek úplně zmizel */
             }
         }
 
@@ -485,14 +485,34 @@
         function startCrawlAnimation() {
             const partiesContainer = document.getElementById('partiesContainer');
             
-            // Vypočítat šířku obsahu
-            const containerWidth = window.innerWidth;
+            // Vypočítat šířky
+            const viewportWidth = window.innerWidth;
             const contentWidth = partiesContainer.scrollWidth;
             
-            // Vypočítat dobu animace (rychlost: 100px za sekundu)
-            const animationDuration = (containerWidth + contentWidth) / 100; // sekundy
+            // Vypočítat správný konečný translateX tak, aby poslední prvek úplně zmizel vlevo
+            // Od -100% ještě odečteme poměr šířky obsahu k viewportu
+            const finalTranslatePercent = -100 - (contentWidth / viewportWidth * 100);
             
-            console.log(`[${new Date().toLocaleTimeString()}] 🎬 Spouštím crawl - šířka: ${contentWidth}px, doba: ${animationDuration.toFixed(1)}s`);
+            // Vypočítat dobu animace (rychlost: 100px za sekundu)
+            // Celková vzdálenost je od 100% doprava do finalTranslatePercent vlevo
+            const totalDistance = viewportWidth + contentWidth; // v pixelech
+            const animationDuration = totalDistance / 100; // sekundy
+            
+            console.log(`[${new Date().toLocaleTimeString()}] 🎬 Crawl: ${contentWidth}px obsah, konec na ${finalTranslatePercent.toFixed(0)}%, doba ${animationDuration.toFixed(1)}s`);
+            
+            // Vytvořit dynamické CSS keyframe
+            const keyframeName = 'scroll-left-' + Date.now();
+            const keyframeCSS = `
+                @keyframes ${keyframeName} {
+                    0% { transform: translateX(100%); }
+                    100% { transform: translateX(${finalTranslatePercent}%); }
+                }
+            `;
+            
+            // Přidat keyframe do stylu
+            const styleElement = document.createElement('style');
+            styleElement.textContent = keyframeCSS;
+            document.head.appendChild(styleElement);
             
             // Resetovat pozici na začátek (vpravo)
             partiesContainer.style.transform = 'translateX(100%)';
@@ -500,7 +520,18 @@
             
             // Spustit animaci
             setTimeout(() => {
-                partiesContainer.style.animation = `scroll-left ${animationDuration}s linear`;
+                partiesContainer.style.animation = `${keyframeName} ${animationDuration}s linear`;
+                
+                // Vyčistit keyframe po animaci
+                setTimeout(() => {
+                    try {
+                        if (styleElement.parentNode) {
+                            document.head.removeChild(styleElement);
+                        }
+                    } catch (error) {
+                        console.log('Keyframe cleanup skipped:', error.message);
+                    }
+                }, animationDuration * 1000 + 1000);
             }, 50);
         }
 
