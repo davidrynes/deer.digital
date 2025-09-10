@@ -351,7 +351,7 @@
                         parties: [
                             { shortName8: "SPOLU", color: "#4175e0", votes: 150000, votesPercent: 35.0, numOfMandates: 8 },
                             { shortName8: "ANO", color: "#33cccc", votes: 120000, votesPercent: 28.0, numOfMandates: 6 },
-                            { shortName8: "Piráti+STAN", color: "#222222", votes: 80000, votesPercent: 18.5, numOfMandates: 4 }
+                            { shortName8: "Švýcar. demokr.", color: "#222222", votes: 80000, votesPercent: 18.5, numOfMandates: 4 }
                         ]
                     }
                 ];
@@ -409,7 +409,7 @@
                 
                 // Vytvořit obsah pouze jednou (ne opakování)
                 currentRegion.parties.forEach((party, index) => {
-                    const displayName = party.shortName8.length > 10 ? party.shortName8.substring(0, 10) : party.shortName8;
+                    const displayName = party.shortName8.length > 15 ? party.shortName8.substring(0, 10) : party.shortName8;
                     
                     const percent = formatPercent(party.votesPercent);
                     const mandates = party.numOfMandates || 0;
