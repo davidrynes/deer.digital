@@ -196,6 +196,21 @@
             100% { opacity: 0.7; }
         }
 
+        /* Sentinel blok - zajistit úplné skrytí */
+        #crawl-sentinel {
+            opacity: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            visibility: hidden !important;
+        }
+
+        /* Sentinel blok - úplně skrytý */
+        .party-block#crawl-sentinel {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
         .party-percent {
             animation: waiting-pulse 2s infinite;
         }
@@ -303,7 +318,6 @@
             const counted = turnout.precinctsFinishedPercent || 0;
             const voterTurnout = turnout.voterTurnout || 0;
             
-            console.log(`[${new Date().toLocaleTimeString()}] 🎭 Spouštím header animaci pro: ${region.name}`);
             
             // Fáze 1: Slide out (mizí vlevo/vpravo)
             headerLeft.classList.add('slide-out');
@@ -331,7 +345,6 @@
 
         async function loadRegionsData() {
             try {
-                console.log(`[${new Date().toLocaleTimeString()}] Načítám data krajů z API...`);
                 
                 let response;
                 let data;
@@ -341,18 +354,14 @@
                     response = await fetch('https://api.elections.seznam.cz/parliament/2021/regions');
                     if (!response.ok) throw new Error('Direct fetch failed');
                     data = await response.json();
-                    console.log(`[${new Date().toLocaleTimeString()}] ✅ Přímé načtení úspěšné`);
                 } catch (error) {
                     // Fallback na CORS proxy
-                    console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Přímé načtení selhalo, používám CORS proxy...`);
                     const proxyUrl = 'https://cors-anywhere.herokuapp.com/https://api.elections.seznam.cz/parliament/2021/regions';
                     response = await fetch(proxyUrl);
                     if (!response.ok) throw new Error('Proxy fetch failed');
                     data = await response.json();
-                    console.log(`[${new Date().toLocaleTimeString()}] ✅ CORS proxy úspěšné`);
                 }
                 
-                console.log(`[${new Date().toLocaleTimeString()}] Data úspěšně načtena:`, data._items.length, 'krajů');
                 
                 regionsData = data._items.map(region => ({
                     number: region.number,
@@ -370,15 +379,12 @@
                         .sort((a, b) => b.votesPercent - a.votesPercent) // Seřadit podle procent
                 }));
                 
-                console.log(`[${new Date().toLocaleTimeString()}] Zpracováno krajů:`, regionsData.length);
                 
                 // Začít s prvním krajem
                 currentRegionIndex = 0;
                 startRegionCycling();
                 
             } catch (error) {
-                console.error('🚨 Obě metody načítání selhaly:', error);
-                console.log('📌 Tip: Pro lokální testování otevřete https://cors-anywhere.herokuapp.com/corsdemo a povolte požadavky');
                 
                 // Fallback na testovací data
                 regionsData = [
@@ -394,7 +400,6 @@
                     }
                 ];
                 
-                console.log(`[${new Date().toLocaleTimeString()}] 🔄 Používám fallback testovací data`);
                 startRegionCycling();
             }
         }
@@ -405,45 +410,69 @@
             displayCurrentRegion(false); // První načtení s animací headeru
         }
 
-        function scheduleNextRegion(animationDuration) {
-            // Přesný timeout - započítat i 50ms delay před spuštěním animace
-            const exactDelay = (animationDuration * 1000) + 50; // Animace + její delay
+        // Globální proměnná pro monitoring animace
+        let animationMonitorId = null;
+
+        function setupSentinelMonitoring() {
+            // Zrušit starý monitoring pokud existuje
+            if (animationMonitorId) {
+                cancelAnimationFrame(animationMonitorId);
+                animationMonitorId = null;
+            }
+
+            const sentinelElement = document.getElementById('crawl-sentinel');
+            if (!sentinelElement) {
+                return;
+            }
             
-            const scheduledTime = new Date(Date.now() + exactDelay);
-            const currentTime = new Date();
+            let lastCheck = Date.now();
+            let hasPassedViewport = false;
             
-            console.log(`[${currentTime.toLocaleTimeString()}] ⏰ PLÁNOVÁNÍ: animace=${animationDuration.toFixed(1)}s, delay=${exactDelay}ms, spustí se v ${scheduledTime.toLocaleTimeString()}`);
+            // Monitoring funkcí pomocí requestAnimationFrame
+            function monitorSentinel() {
+                const now = Date.now();
+                
+                // Kontrolovat každých 100ms pro performance
+                if (now - lastCheck > 100) {
+                    const rect = sentinelElement.getBoundingClientRect();
+                    const isCompletelyLeft = rect.right < 0;
+                    lastCheck = now;
+                    
+                    // Když sentinel úplně zmizel vlevo
+                    if (isCompletelyLeft && !hasPassedViewport) {
+                        hasPassedViewport = true;
+                        
+                        // Zastavit monitoring
+                        cancelAnimationFrame(animationMonitorId);
+                        animationMonitorId = null;
+                        
+                        // Okamžitě změnit na další kraj
+                        currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
+                        const nextRegion = regionsData[currentRegionIndex];
+                        
+                        // Spustit animaci headeru
+                        updateHeader(nextRegion);
+                        
+                        // Načíst nový crawl
+                        setTimeout(() => {
+                            displayCurrentRegion(true); // Header už byl animován
+                        }, 300);
+                        
+                        return; // Ukončit monitoring
+                    }
+                }
+                
+                // Pokračovat v monitoringu
+                animationMonitorId = requestAnimationFrame(monitorSentinel);
+            }
             
-            const timeoutId = setTimeout(() => {
-                const actualTime = new Date();
-                console.log(`[${actualTime.toLocaleTimeString()}] 🏁 TIMEOUT SE SPUSTIL! Pro kraj: ${currentRegion.name}`);
-                console.log(`[${actualTime.toLocaleTimeString()}] ⏱️  Plánováno: ${scheduledTime.toLocaleTimeString()}, Skutečnost: ${actualTime.toLocaleTimeString()}`);
-                
-                // Okamžitě změnit na další kraj
-                currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
-                const nextRegion = regionsData[currentRegionIndex];
-                
-                console.log(`[${actualTime.toLocaleTimeString()}] 🔄 Přepínám na: ${nextRegion.name}`);
-                
-                // Spustit animaci headeru
-                updateHeader(nextRegion);
-                
-                // Načíst nový crawl rychleji
-                setTimeout(() => {
-                    console.log(`[${new Date().toLocaleTimeString()}] ⚡ Spouštím nový crawl pro: ${nextRegion.name}`);
-                    displayCurrentRegion(true); // Header už byl animován
-                }, 300);
-                
-            }, exactDelay);
-            
-            console.log(`[${currentTime.toLocaleTimeString()}] 📋 setTimeout ID: ${timeoutId}, delay: ${exactDelay}ms`);
+            // Spustit monitoring
+            animationMonitorId = requestAnimationFrame(monitorSentinel);
         }
 
         function displayCurrentRegion(isHeaderAlreadyAnimated = false) {
             currentRegion = regionsData[currentRegionIndex];
             
-            const logPrefix = isHeaderAlreadyAnimated ? "⏩ Načítám crawl pro:" : "🏁 Zobrazuji první kraj:";
-            console.log(`[${new Date().toLocaleTimeString()}] ${logPrefix}`, currentRegion.name);
             
             // Aktualizovat header (animace jen pokud ještě nebyla provedena)
             if (!isHeaderAlreadyAnimated) {
@@ -489,8 +518,26 @@
                     `;
                 });
                 
+                // Přidat VIDITELNÝ sentinel blok na konec
+                content += `
+                    <div id="crawl-sentinel" class="party-block" style="
+                        width: 160px !important;
+                        min-width: 160px !important;
+                    ">
+                        <div class="party-name">SENTINEL</div>
+                        <div class="party-stats-row">
+                            <div class="party-percent">END</div>
+                            <div class="party-mandates">MARKER</div>
+                        </div>
+                        <div class="party-votes">BLOCK</div>
+                    </div>
+                `;
+                
                 partiesContainer.innerHTML = content;
                 partiesContainer.classList.remove('updating');
+                
+                // Nastavit monitoring pro sentinel blok
+                setupSentinelMonitoring();
                 
                 // Spustit animaci po načtení obsahu
                 startCrawlAnimation();
@@ -509,12 +556,11 @@
             // Od -100% ještě odečteme poměr šířky obsahu k viewportu
             const finalTranslatePercent = -100 - (contentWidth / viewportWidth * 100);
             
-            // Vypočítat dobu animace (rychlost: 400px za sekundu - maximálně zrychleno)
+            // Vypočítar dobu animace (rychlost: 120px za sekundu - čitelně s observer precizností)
             // Celková vzdálenost je od 100% doprava do finalTranslatePercent vlevo
             const totalDistance = viewportWidth + contentWidth; // v pixelech
-            const animationDuration = Math.max(totalDistance / 400, 5); // sekundy (minimum 5s, maximum rychlost 400px/s)
+            const animationDuration = Math.max(totalDistance / 120, 10); // sekundy (minimum 10s pro čitelnost, rychlost 120px/s)
             
-            console.log(`[${new Date().toLocaleTimeString()}] 🎬 DEBUG: viewport=${viewportWidth}px, obsah=${contentWidth}px, vzdálenost=${totalDistance}px, doba=${animationDuration.toFixed(1)}s`);
             
             // Vytvořit dynamické CSS keyframe
             const keyframeName = 'scroll-left-' + Date.now();
@@ -539,11 +585,33 @@
                 const startTime = new Date();
                 const endTime = new Date(startTime.getTime() + (animationDuration * 1000));
                 
-                console.log(`[${startTime.toLocaleTimeString()}] 🚀 ANIMACE START: ${currentRegion.name}, doba=${animationDuration.toFixed(1)}s, skončí v ${endTime.toLocaleTimeString()}`);
                 partiesContainer.style.animation = `${keyframeName} ${animationDuration}s linear`;
                 
-                // Naplánovat následující kraj přesně na konec této animace
-                scheduleNextRegion(animationDuration);
+                // FALLBACK: Přidat animationend listener jako záložní řešení
+                const handleAnimationEnd = (event) => {
+                    if (event.target !== partiesContainer) return;
+                    
+                    // Odebrat listener
+                    partiesContainer.removeEventListener('animationend', handleAnimationEnd);
+                    
+                    // Pouze pokud monitoring selhal (stále běží)
+                    if (animationMonitorId) {
+                        // Zrušit neúspěšný monitoring
+                        cancelAnimationFrame(animationMonitorId);
+                        animationMonitorId = null;
+                        
+                        // Pokračovat změnou kraje
+                        currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
+                        const nextRegion = regionsData[currentRegionIndex];
+                        
+                        updateHeader(nextRegion);
+                        setTimeout(() => {
+                            displayCurrentRegion(true);
+                        }, 300);
+                    }
+                };
+                
+                partiesContainer.addEventListener('animationend', handleAnimationEnd);
                 
                 // Vyčistit keyframe po animaci
                 setTimeout(() => {
@@ -552,7 +620,7 @@
                             document.head.removeChild(styleElement);
                         }
                     } catch (error) {
-                        console.log('Keyframe cleanup skipped:', error.message);
+                        // Keyframe cleanup skipped
                     }
                 }, animationDuration * 1000 + 1000);
             }, 50);
