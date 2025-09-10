@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crawl kraje</title>
+    <!-- 
+        CORS řešení: 
+        1. Pokusí se o přímé načtení z API
+        2. Při selhání použije CORS proxy (cors-anywhere.herokuapp.com)
+        3. Při selhání obou použije fallback testovací data
+        
+        Pro aktivaci CORS proxy navštivte: https://cors-anywhere.herokuapp.com/corsdemo
+    -->
     <style>
         * {
             margin: 0;
@@ -286,8 +294,24 @@
             try {
                 console.log(`[${new Date().toLocaleTimeString()}] Načítám data krajů z API...`);
                 
-                const response = await fetch('https://api.elections.seznam.cz/parliament/2021/regions');
-                const data = await response.json();
+                let response;
+                let data;
+                
+                try {
+                    // Pokus o přímé načtení
+                    response = await fetch('https://api.elections.seznam.cz/parliament/2021/regions');
+                    if (!response.ok) throw new Error('Direct fetch failed');
+                    data = await response.json();
+                    console.log(`[${new Date().toLocaleTimeString()}] ✅ Přímé načtení úspěšné`);
+                } catch (error) {
+                    // Fallback na CORS proxy
+                    console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Přímé načtení selhalo, používám CORS proxy...`);
+                    const proxyUrl = 'https://cors-anywhere.herokuapp.com/https://api.elections.seznam.cz/parliament/2021/regions';
+                    response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error('Proxy fetch failed');
+                    data = await response.json();
+                    console.log(`[${new Date().toLocaleTimeString()}] ✅ CORS proxy úspěšné`);
+                }
                 
                 console.log(`[${new Date().toLocaleTimeString()}] Data úspěšně načtena:`, data._items.length, 'krajů');
                 
@@ -314,7 +338,8 @@
                 startRegionCycling();
                 
             } catch (error) {
-                console.error('Chyba při načítání dat krajů:', error);
+                console.error('🚨 Obě metody načítání selhaly:', error);
+                console.log('📌 Tip: Pro lokální testování otevřete https://cors-anywhere.herokuapp.com/corsdemo a povolte požadavky');
                 
                 // Fallback na testovací data
                 regionsData = [
@@ -330,6 +355,7 @@
                     }
                 ];
                 
+                console.log(`[${new Date().toLocaleTimeString()}] 🔄 Používám fallback testovací data`);
                 startRegionCycling();
             }
         }
