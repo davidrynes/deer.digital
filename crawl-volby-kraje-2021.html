@@ -410,27 +410,33 @@
             const exactDelay = (animationDuration * 1000) + 50; // Animace + její delay
             
             const scheduledTime = new Date(Date.now() + exactDelay);
-            console.log(`[${new Date().toLocaleTimeString()}] ⏰ Plánujem změnu kraje za ${((exactDelay)/1000).toFixed(1)}s (v ${scheduledTime.toLocaleTimeString()})`);
+            const currentTime = new Date();
             
-            setTimeout(() => {
-                console.log(`[${new Date().toLocaleTimeString()}] 🏁 PŘESNÝ TIMEOUT: Crawl dokončen pro kraj: ${currentRegion.name}`);
+            console.log(`[${currentTime.toLocaleTimeString()}] ⏰ PLÁNOVÁNÍ: animace=${animationDuration.toFixed(1)}s, delay=${exactDelay}ms, spustí se v ${scheduledTime.toLocaleTimeString()}`);
+            
+            const timeoutId = setTimeout(() => {
+                const actualTime = new Date();
+                console.log(`[${actualTime.toLocaleTimeString()}] 🏁 TIMEOUT SE SPUSTIL! Pro kraj: ${currentRegion.name}`);
+                console.log(`[${actualTime.toLocaleTimeString()}] ⏱️  Plánováno: ${scheduledTime.toLocaleTimeString()}, Skutečnost: ${actualTime.toLocaleTimeString()}`);
                 
                 // Okamžitě změnit na další kraj
                 currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
                 const nextRegion = regionsData[currentRegionIndex];
                 
-                console.log(`[${new Date().toLocaleTimeString()}] 🔄 Okamžitě přepínám na: ${nextRegion.name}`);
+                console.log(`[${actualTime.toLocaleTimeString()}] 🔄 Přepínám na: ${nextRegion.name}`);
                 
                 // Spustit animaci headeru
                 updateHeader(nextRegion);
                 
                 // Načíst nový crawl rychleji
                 setTimeout(() => {
-                    console.log(`[${new Date().toLocaleTimeString()}] ⚡ Spouštím crawl pro: ${nextRegion.name}`);
+                    console.log(`[${new Date().toLocaleTimeString()}] ⚡ Spouštím nový crawl pro: ${nextRegion.name}`);
                     displayCurrentRegion(true); // Header už byl animován
                 }, 300);
                 
             }, exactDelay);
+            
+            console.log(`[${currentTime.toLocaleTimeString()}] 📋 setTimeout ID: ${timeoutId}, delay: ${exactDelay}ms`);
         }
 
         function displayCurrentRegion(isHeaderAlreadyAnimated = false) {
@@ -503,12 +509,12 @@
             // Od -100% ještě odečteme poměr šířky obsahu k viewportu
             const finalTranslatePercent = -100 - (contentWidth / viewportWidth * 100);
             
-            // Vypočítat dobu animace (rychlost: 100px za sekundu)
+            // Vypočítat dobu animace (rychlost: 400px za sekundu - maximálně zrychleno)
             // Celková vzdálenost je od 100% doprava do finalTranslatePercent vlevo
             const totalDistance = viewportWidth + contentWidth; // v pixelech
-            const animationDuration = totalDistance / 100; // sekundy
+            const animationDuration = Math.max(totalDistance / 400, 5); // sekundy (minimum 5s, maximum rychlost 400px/s)
             
-            console.log(`[${new Date().toLocaleTimeString()}] 🎬 Crawl: ${contentWidth}px obsah, konec na ${finalTranslatePercent.toFixed(0)}%, doba ${animationDuration.toFixed(1)}s, změna za ${animationDuration.toFixed(1)}s`);
+            console.log(`[${new Date().toLocaleTimeString()}] 🎬 DEBUG: viewport=${viewportWidth}px, obsah=${contentWidth}px, vzdálenost=${totalDistance}px, doba=${animationDuration.toFixed(1)}s`);
             
             // Vytvořit dynamické CSS keyframe
             const keyframeName = 'scroll-left-' + Date.now();
@@ -530,7 +536,10 @@
             
             // Spustit animaci
             setTimeout(() => {
-                console.log(`[${new Date().toLocaleTimeString()}] 🚀 SPOUŠTÍM animaci pro kraj: ${currentRegion.name}`);
+                const startTime = new Date();
+                const endTime = new Date(startTime.getTime() + (animationDuration * 1000));
+                
+                console.log(`[${startTime.toLocaleTimeString()}] 🚀 ANIMACE START: ${currentRegion.name}, doba=${animationDuration.toFixed(1)}s, skončí v ${endTime.toLocaleTimeString()}`);
                 partiesContainer.style.animation = `${keyframeName} ${animationDuration}s linear`;
                 
                 // Naplánovat následující kraj přesně na konec této animace
