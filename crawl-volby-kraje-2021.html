@@ -68,8 +68,9 @@
             height: 95px;
             align-items: center;
             white-space: nowrap;
-            animation: scroll-left 120s linear infinite;
+            /* Animace se nastavuje dynamicky podle obsahu */
             padding: 0 20px;
+            transform: translateX(100%); /* Začíná vpravo */
         }
 
         .party-block {
@@ -157,10 +158,10 @@
         /* Animace */
         @keyframes scroll-left {
             0% {
-                transform: translateX(0);
+                transform: translateX(100%); /* Začíná vpravo */
             }
             100% {
-                transform: translateX(-100%);
+                transform: translateX(-100%); /* Končí vlevo (úplně zmizí) */
             }
         }
 
@@ -365,11 +366,19 @@
             
             displayCurrentRegion();
             
-            // Střídání krajů každých 60 sekund (délka jednoho cyklu crawlu)
-            setInterval(() => {
+            // Event listener pro konec animace
+            const partiesContainer = document.getElementById('partiesContainer');
+            partiesContainer.addEventListener('animationend', () => {
+                console.log(`[${new Date().toLocaleTimeString()}] 🏁 Crawl dokončen pro kraj: ${currentRegion.name}`);
+                
+                // Změnit na další kraj
                 currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
-                displayCurrentRegion();
-            }, 60000); // 60 sekund
+                
+                // Malá pauza před načtením nového kraje
+                setTimeout(() => {
+                    displayCurrentRegion();
+                }, 500);
+            });
         }
 
         function displayCurrentRegion() {
@@ -398,37 +407,56 @@
             setTimeout(() => {
                 let content = '';
                 
-                // Vytvořit více opakování pro kontinuální crawl
-                for (let repeat = 0; repeat < 5; repeat++) {
-                    currentRegion.parties.forEach(party => {
-                        const displayName = party.shortName8.length > 10 ? party.shortName8.substring(0, 10) : party.shortName8;
-                        
-                        const percent = formatPercent(party.votesPercent);
-                        const mandates = party.numOfMandates || 0;
-                        const votes = formatNumber(party.votes);
-                        const mandatesText = getMandatesText(mandates);
-                        
-                        content += `
-                            <div class="party-block" style="border-left-color: ${party.color};">
-                                <div class="party-name">${displayName}</div>
-                                <div class="party-stats-row">
-                                    <div class="party-percent">${percent}%</div>
-                                    <div class="party-mandates">${mandates} ${mandatesText}</div>
-                                </div>
-                                <div class="party-votes">${votes} hlasů</div>
-                            </div>
-                        `;
-                    });
+                // Vytvořit obsah pouze jednou (ne opakování)
+                currentRegion.parties.forEach((party, index) => {
+                    const displayName = party.shortName8.length > 10 ? party.shortName8.substring(0, 10) : party.shortName8;
                     
-                    // Přidat mezeru mezi opakování
-                    if (repeat < 4) {
-                        content += '<div style="display: inline-block; width: 20px; height: 95px;"></div>';
-                    }
-                }
+                    const percent = formatPercent(party.votesPercent);
+                    const mandates = party.numOfMandates || 0;
+                    const votes = formatNumber(party.votes);
+                    const mandatesText = getMandatesText(mandates);
+                    
+                    content += `
+                        <div class="party-block" style="border-left-color: ${party.color};">
+                            <div class="party-name">${displayName}</div>
+                            <div class="party-stats-row">
+                                <div class="party-percent">${percent}%</div>
+                                <div class="party-mandates">${mandates} ${mandatesText}</div>
+                            </div>
+                            <div class="party-votes">${votes} hlasů</div>
+                        </div>
+                    `;
+                });
                 
                 partiesContainer.innerHTML = content;
                 partiesContainer.classList.remove('updating');
+                
+                // Spustit animaci po načtení obsahu
+                startCrawlAnimation();
+                
             }, 150);
+        }
+
+        function startCrawlAnimation() {
+            const partiesContainer = document.getElementById('partiesContainer');
+            
+            // Vypočítat šířku obsahu
+            const containerWidth = window.innerWidth;
+            const contentWidth = partiesContainer.scrollWidth;
+            
+            // Vypočítat dobu animace (rychlost: 100px za sekundu)
+            const animationDuration = (containerWidth + contentWidth) / 100; // sekundy
+            
+            console.log(`[${new Date().toLocaleTimeString()}] 🎬 Spouštím crawl - šířka: ${contentWidth}px, doba: ${animationDuration.toFixed(1)}s`);
+            
+            // Resetovat pozici na začátek (vpravo)
+            partiesContainer.style.transform = 'translateX(100%)';
+            partiesContainer.style.animation = 'none';
+            
+            // Spustit animaci
+            setTimeout(() => {
+                partiesContainer.style.animation = `scroll-left ${animationDuration}s linear`;
+            }, 50);
         }
 
         // Spustit načítání dat po načtení stránky
