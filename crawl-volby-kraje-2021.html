@@ -55,14 +55,14 @@
             font-size: 16px;
             font-weight: 700;
             color: #212529;
-            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
         }
 
         .header-right {
             font-size: 14px;
             font-weight: 600;
             color: #495057;
-            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
         }
 
         /* Animace pro slide out */
@@ -303,7 +303,7 @@
             const counted = turnout.precinctsFinishedPercent || 0;
             const voterTurnout = turnout.voterTurnout || 0;
             
-            console.log(`[${new Date().toLocaleTimeString()}] 🎬 Animuji přechod na: ${region.name}`);
+            console.log(`[${new Date().toLocaleTimeString()}] 🎭 Spouštím header animaci pro: ${region.name}`);
             
             // Fáze 1: Slide out (mizí vlevo/vpravo)
             headerLeft.classList.add('slide-out');
@@ -326,7 +326,7 @@
                     headerRight.classList.remove('slide-in');
                 }, 50);
                 
-            }, 300); // Doba slide-out animace
+                }, 200); // Doba slide-out animace (zkráceno z 300ms)
         }
 
         async function loadRegionsData() {
@@ -403,28 +403,30 @@
             if (regionsData.length === 0) return;
             
             displayCurrentRegion(false); // První načtení s animací headeru
-        }
-
-        function scheduleNextRegion(animationDuration) {
-            // Naplánovat změnu kraje přesně na konec animace
-            const changeTime = (animationDuration * 1000) + 50; // +50ms buffer
             
-            setTimeout(() => {
+            // Přidat event listener pro přesnější timing
+            const partiesContainer = document.getElementById('partiesContainer');
+            partiesContainer.addEventListener('animationend', (event) => {
+                // Ověřit, že event pochází z crawl animace (ne z jiné animace)
+                if (event.target !== partiesContainer) return;
+                
                 console.log(`[${new Date().toLocaleTimeString()}] 🏁 Crawl dokončen pro kraj: ${currentRegion.name}`);
                 
-                // Změnit na další kraj
+                // Okamžitě změnit na další kraj
                 currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
+                const nextRegion = regionsData[currentRegionIndex];
+                
+                console.log(`[${new Date().toLocaleTimeString()}] 🔄 Okamžitě přepínám na: ${nextRegion.name}`);
                 
                 // Spustit animaci headeru
-                const nextRegion = regionsData[currentRegionIndex];
                 updateHeader(nextRegion);
                 
-                // Načíst nový crawl po skončení animace headeru
+                // Načíst nový crawl rychleji
                 setTimeout(() => {
+                    console.log(`[${new Date().toLocaleTimeString()}] ⚡ Spouštím crawl pro: ${nextRegion.name}`);
                     displayCurrentRegion(true); // Header už byl animován
-                }, 650); // Čas na slide out/in animaci headeru (300+300+50ms)
-                
-            }, changeTime);
+                }, 300); // 200ms slide-out + 200ms slide-in + 100ms buffer = 500ms, ale zkrátíme na 300ms
+            });
         }
 
         function displayCurrentRegion(isHeaderAlreadyAnimated = false) {
@@ -502,7 +504,7 @@
             const totalDistance = viewportWidth + contentWidth; // v pixelech
             const animationDuration = totalDistance / 100; // sekundy
             
-            console.log(`[${new Date().toLocaleTimeString()}] 🎬 Crawl: ${contentWidth}px obsah, konec na ${finalTranslatePercent.toFixed(0)}%, doba ${animationDuration.toFixed(1)}s, změna kraje za ${(animationDuration + 0.7).toFixed(1)}s`);
+            console.log(`[${new Date().toLocaleTimeString()}] 🎬 Crawl: ${contentWidth}px obsah, konec na ${finalTranslatePercent.toFixed(0)}%, doba ${animationDuration.toFixed(1)}s`);
             
             // Vytvořit dynamické CSS keyframe
             const keyframeName = 'scroll-left-' + Date.now();
@@ -525,9 +527,6 @@
             // Spustit animaci
             setTimeout(() => {
                 partiesContainer.style.animation = `${keyframeName} ${animationDuration}s linear`;
-                
-                // Naplánovat následující kraj přesně na konec této animace
-                scheduleNextRegion(animationDuration);
                 
                 // Vyčistit keyframe po animaci
                 setTimeout(() => {
