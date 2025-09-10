@@ -55,12 +55,36 @@
             font-size: 16px;
             font-weight: 700;
             color: #212529;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
 
         .header-right {
             font-size: 14px;
             font-weight: 600;
             color: #495057;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+
+        /* Animace pro slide out */
+        .header-left.slide-out {
+            transform: translateX(-30px);
+            opacity: 0;
+        }
+
+        .header-right.slide-out {
+            transform: translateX(30px);
+            opacity: 0;
+        }
+
+        /* Animace pro slide in */
+        .header-left.slide-in {
+            transform: translateX(30px);
+            opacity: 0;
+        }
+
+        .header-right.slide-in {
+            transform: translateX(-30px);
+            opacity: 0;
         }
 
         .parties-container {
@@ -279,16 +303,30 @@
             const counted = turnout.precinctsFinishedPercent || 0;
             const voterTurnout = turnout.voterTurnout || 0;
             
-            // Smooth update
-            headerLeft.classList.add('updating');
-            headerRight.classList.add('updating');
+            console.log(`[${new Date().toLocaleTimeString()}] 🎬 Animuji přechod na: ${region.name}`);
+            
+            // Fáze 1: Slide out (mizí vlevo/vpravo)
+            headerLeft.classList.add('slide-out');
+            headerRight.classList.add('slide-out');
             
             setTimeout(() => {
+                // Fáze 2: Změna obsahu
                 headerLeft.innerHTML = `Výsledky voleb: ${region.name}`;
                 headerRight.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
-                headerLeft.classList.remove('updating');
-                headerRight.classList.remove('updating');
-            }, 150);
+                
+                // Fáze 3: Příprava slide in (začíná z opačné strany)
+                headerLeft.classList.remove('slide-out');
+                headerRight.classList.remove('slide-out');
+                headerLeft.classList.add('slide-in');
+                headerRight.classList.add('slide-in');
+                
+                // Fáze 4: Slide in (vjíždí do normální pozice)
+                setTimeout(() => {
+                    headerLeft.classList.remove('slide-in');
+                    headerRight.classList.remove('slide-in');
+                }, 50);
+                
+            }, 300); // Doba slide-out animace
         }
 
         async function loadRegionsData() {
@@ -364,7 +402,7 @@
         function startRegionCycling() {
             if (regionsData.length === 0) return;
             
-            displayCurrentRegion();
+            displayCurrentRegion(false); // První načtení s animací headeru
             
             // Event listener pro konec animace
             const partiesContainer = document.getElementById('partiesContainer');
@@ -374,20 +412,27 @@
                 // Změnit na další kraj
                 currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
                 
-                // Malá pauza před načtením nového kraje
+                // Spustit animaci headeru a pak načíst nový kraj
+                const nextRegion = regionsData[currentRegionIndex];
+                updateHeader(nextRegion);
+                
+                // Počkat na dokončení animace headeru, pak načíst nový crawl
                 setTimeout(() => {
-                    displayCurrentRegion();
-                }, 500);
+                    displayCurrentRegion(true); // Header už byl animován
+                }, 1000); // 300ms slide-out + 300ms slide-in + 400ms buffer pro plynulost
             });
         }
 
-        function displayCurrentRegion() {
+        function displayCurrentRegion(isHeaderAlreadyAnimated = false) {
             currentRegion = regionsData[currentRegionIndex];
             
-            console.log(`[${new Date().toLocaleTimeString()}] Zobrazuji kraj:`, currentRegion.name);
+            const logPrefix = isHeaderAlreadyAnimated ? "⏩ Načítám crawl pro:" : "🏁 Zobrazuji první kraj:";
+            console.log(`[${new Date().toLocaleTimeString()}] ${logPrefix}`, currentRegion.name);
             
-            // Aktualizovat header
-            updateHeader(currentRegion);
+            // Aktualizovat header (animace jen pokud ještě nebyla provedena)
+            if (!isHeaderAlreadyAnimated) {
+                updateHeader(currentRegion);
+            }
             
             // Generovat crawl obsah
             generateCrawlContent();
