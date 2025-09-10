@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crawl kraje</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: transparent;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .dashboard-container {
+            width: 100%;
+            height: 130px;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+        }
+
+        .header {
+            height: 35px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 20px;
+        }
+
+        .header-left {
+            font-size: 16px;
+            font-weight: 700;
+            color: #212529;
+        }
+
+        .header-right {
+            font-size: 14px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .parties-container {
+            display: flex;
+            height: 95px;
+            align-items: center;
+            white-space: nowrap;
+            animation: scroll-left 120s linear infinite;
+            padding: 0 20px;
+        }
+
+        .party-block {
+            display: inline-flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px 12px 8px 12px;
+            margin: 0;
+            min-width: 180px;
+            position: relative;
+            background: white;
+            border-left: 4px solid;
+            border-right: 2px solid #e9ecef;
+            text-align: left;
+            height: 95px;
+            box-sizing: border-box;
+        }
+
+        .party-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #212529;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+        }
+
+        .party-stats-row {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin: 8px 0 4px 0;
+        }
+
+        .party-percent {
+            font-size: 22px;
+            font-weight: 800;
+            color: #212529;
+            line-height: 1;
+        }
+
+        .party-mandates {
+            font-size: 11px;
+            font-weight: 500;
+            color: #6c757d;
+            line-height: 1.1;
+        }
+
+        .party-votes {
+            font-size: 11px;
+            font-weight: 500;
+            color: #6c757d;
+            text-align: center;
+            margin-top: auto;
+            line-height: 1.1;
+        }
+
+        /* Divider mezi opakováními */
+        .divider {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 76px;
+        }
+
+        .divider-dot {
+            width: 4px;
+            height: 4px;
+            background: #ced4da;
+            border-radius: 50%;
+            margin: 0 3px;
+        }
+
+        /* Loading state */
+        .loading {
+            color: #666;
+            text-align: center;
+            padding: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        /* Animace */
+        @keyframes scroll-left {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        /* Pulsing animace pro "čekání na data" */
+        @keyframes waiting-pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+
+        .party-percent {
+            animation: waiting-pulse 2s infinite;
+        }
+
+        /* Responsivní úpravy */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                height: 110px;
+            }
+            
+            .header {
+                height: 30px;
+                padding: 6px 15px;
+            }
+            
+            .header-left {
+                font-size: 14px;
+            }
+            
+            .header-right {
+                font-size: 12px;
+            }
+            
+            .parties-container {
+                height: 80px;
+            }
+            
+            .party-block {
+                min-width: 120px;
+                height: 80px;
+                padding: 6px 10px 6px 10px;
+            }
+            
+            .party-name {
+                font-size: 12px;
+            }
+            
+            .party-percent {
+                font-size: 20px;
+            }
+            
+            .party-mandates, .party-votes {
+                font-size: 10px;
+            }
+            
+            .party-stats-row {
+                margin: 4px 0 2px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <div class="header-left" id="headerLeft">Výsledky voleb: Načítám kraje...</div>
+            <div class="header-right" id="headerRight">sečteno: 0,00%, účast: 0,00%</div>
+        </div>
+        <div class="parties-container" id="partiesContainer">
+            <div class="loading">Připojuji k API krajů 2021...</div>
+        </div>
+    </div>
+
+    <script>
+        let regionsData = [];
+        let currentRegionIndex = 0;
+        let currentRegion = null;
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return "0";
+            return num.toLocaleString('cs-CZ');
+        }
+
+        function formatPercent(num) {
+            if (num === null || num === undefined) return "0.0";
+            return num.toFixed(2);
+        }
+
+        function getMandatesText(num) {
+            if (num === null || num === undefined || num === 0) return "mandátů";
+            
+            // České skloňování
+            const lastDigit = num % 10;
+            const lastTwoDigits = num % 100;
+            
+            // Výjimky pro 11, 12, 13, 14
+            if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+                return "mandátů";
+            }
+            
+            // Základní pravidla
+            if (lastDigit === 1) {
+                return "mandát";
+            } else if (lastDigit >= 2 && lastDigit <= 4) {
+                return "mandáty";
+            } else {
+                return "mandátů";
+            }
+        }
+
+        function updateHeader(region) {
+            const headerLeft = document.getElementById('headerLeft');
+            const headerRight = document.getElementById('headerRight');
+            
+            const turnout = region.turnout || {};
+            const counted = turnout.precinctsFinishedPercent || 0;
+            const voterTurnout = turnout.voterTurnout || 0;
+            
+            // Smooth update
+            headerLeft.classList.add('updating');
+            headerRight.classList.add('updating');
+            
+            setTimeout(() => {
+                headerLeft.innerHTML = `Výsledky voleb: ${region.name}`;
+                headerRight.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
+                headerLeft.classList.remove('updating');
+                headerRight.classList.remove('updating');
+            }, 150);
+        }
+
+        async function loadRegionsData() {
+            try {
+                console.log(`[${new Date().toLocaleTimeString()}] Načítám data krajů z API...`);
+                
+                const response = await fetch('https://api.elections.seznam.cz/parliament/2021/regions');
+                const data = await response.json();
+                
+                console.log(`[${new Date().toLocaleTimeString()}] Data úspěšně načtena:`, data._items.length, 'krajů');
+                
+                regionsData = data._items.map(region => ({
+                    number: region.number,
+                    name: region.name,
+                    turnout: region.turnout,
+                    parties: region.parties
+                        .filter(party => party.shortName8 && party.shortName8.length > 1)
+                        .map(party => ({
+                            shortName8: party.shortName8,
+                            color: party.vParty.color || '#6c757d',
+                            votes: party.results.votes,
+                            votesPercent: party.results.votesPercent,
+                            numOfMandates: party.numOfMandates || 0
+                        }))
+                        .sort((a, b) => b.votesPercent - a.votesPercent) // Seřadit podle procent
+                }));
+                
+                console.log(`[${new Date().toLocaleTimeString()}] Zpracováno krajů:`, regionsData.length);
+                
+                // Začít s prvním krajem
+                currentRegionIndex = 0;
+                startRegionCycling();
+                
+            } catch (error) {
+                console.error('Chyba při načítání dat krajů:', error);
+                
+                // Fallback na testovací data
+                regionsData = [
+                    {
+                        number: 1,
+                        name: "Hlavní město Praha",
+                        turnout: { voterTurnout: 65.0, precinctsFinishedPercent: 100.0 },
+                        parties: [
+                            { shortName8: "SPOLU", color: "#4175e0", votes: 150000, votesPercent: 35.0, numOfMandates: 8 },
+                            { shortName8: "ANO", color: "#33cccc", votes: 120000, votesPercent: 28.0, numOfMandates: 6 },
+                            { shortName8: "Piráti+STAN", color: "#222222", votes: 80000, votesPercent: 18.5, numOfMandates: 4 }
+                        ]
+                    }
+                ];
+                
+                startRegionCycling();
+            }
+        }
+
+        function startRegionCycling() {
+            if (regionsData.length === 0) return;
+            
+            displayCurrentRegion();
+            
+            // Střídání krajů každých 60 sekund (délka jednoho cyklu crawlu)
+            setInterval(() => {
+                currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
+                displayCurrentRegion();
+            }, 60000); // 60 sekund
+        }
+
+        function displayCurrentRegion() {
+            currentRegion = regionsData[currentRegionIndex];
+            
+            console.log(`[${new Date().toLocaleTimeString()}] Zobrazuji kraj:`, currentRegion.name);
+            
+            // Aktualizovat header
+            updateHeader(currentRegion);
+            
+            // Generovat crawl obsah
+            generateCrawlContent();
+        }
+
+        function generateCrawlContent() {
+            const partiesContainer = document.getElementById('partiesContainer');
+            
+            if (!currentRegion || !currentRegion.parties) {
+                partiesContainer.innerHTML = '<div class="loading">Žádná data pro aktuální kraj</div>';
+                return;
+            }
+            
+            // Smooth update - přidat updating class
+            partiesContainer.classList.add('updating');
+            
+            setTimeout(() => {
+                let content = '';
+                
+                // Vytvořit více opakování pro kontinuální crawl
+                for (let repeat = 0; repeat < 5; repeat++) {
+                    currentRegion.parties.forEach(party => {
+                        const displayName = party.shortName8.length > 10 ? party.shortName8.substring(0, 10) : party.shortName8;
+                        
+                        const percent = formatPercent(party.votesPercent);
+                        const mandates = party.numOfMandates || 0;
+                        const votes = formatNumber(party.votes);
+                        const mandatesText = getMandatesText(mandates);
+                        
+                        content += `
+                            <div class="party-block" style="border-left-color: ${party.color};">
+                                <div class="party-name">${displayName}</div>
+                                <div class="party-stats-row">
+                                    <div class="party-percent">${percent}%</div>
+                                    <div class="party-mandates">${mandates} ${mandatesText}</div>
+                                </div>
+                                <div class="party-votes">${votes} hlasů</div>
+                            </div>
+                        `;
+                    });
+                    
+                    // Přidat mezeru mezi opakování
+                    if (repeat < 4) {
+                        content += '<div style="display: inline-block; width: 20px; height: 95px;"></div>';
+                    }
+                }
+                
+                partiesContainer.innerHTML = content;
+                partiesContainer.classList.remove('updating');
+            }, 150);
+        }
+
+        // Spustit načítání dat po načtení stránky
+        document.addEventListener('DOMContentLoaded', loadRegionsData);
+        
+        // Aktualizovat data každých 5 minut (pro případné změny)
+        setInterval(loadRegionsData, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
