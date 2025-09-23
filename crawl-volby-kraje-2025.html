@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crawl ČR + Kraje 2025</title>
+    <!-- 
+        CRAWL PRO VOLBY 2025
+        
+        API endpointy:
+        - ČR: https://api.elections.seznam.cz/parliament/2025/results/cr
+        - Kraje: https://api.elections.seznam.cz/parliament/2025/regions
+        
+        CORS řešení: 
+        1. Pokusí se o přímé načtení z API
+        2. Při selhání použije CORS proxy (cors-anywhere.herokuapp.com)
+        3. Při selhání obou použije fallback testovací data
+        
+        Zobrazuje všechny strany s barvami, null hodnoty jako nuly.
+        Pro aktivaci CORS proxy navštivte: https://cors-anywhere.herokuapp.com/corsdemo
+    -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: transparent;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .dashboard-container {
+            width: 100%;
+            height: 240px; /* Zvětšeno pro větší crawly */
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+        }
+
+        /* Kontejner pro ČR crawl */
+        .cr-crawl-container {
+            width: 100%;
+            height: 80px; /* Zvětšeno z 60px */
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        /* Header pro ČR crawl */
+        .cr-header {
+            height: 30px; /* Zvětšeno z 25px */
+            background: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 20px; /* Zvětšen padding */
+        }
+
+        .cr-header-left {
+            font-size: 16px; /* Zvětšeno z 14px */
+            font-weight: 600;
+            color: #212529;
+        }
+
+        .cr-header-right {
+            font-size: 14px; /* Zvětšeno z 12px */
+            font-weight: 500;
+            color: #495057;
+        }
+
+        /* Kontejner pro parties ČR crawl */
+        .cr-parties-container {
+            display: flex;
+            height: 50px; /* Zvětšeno z 35px */
+            align-items: center;
+            white-space: nowrap;
+            padding: 0 20px;
+            transform: translateX(100%);
+        }
+
+        /* Party bloky pro ČR crawl - skutečně flexibilní podle obsahu */
+        .cr-party-block {
+            display: inline-flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 6px 16px; /* Kompaktní padding */
+            margin: 0;
+            width: fit-content; /* Přesně podle obsahu */
+            position: relative;
+            background: white;
+            border-left: 4px solid; /* Zvětšen border */
+            border-right: 1px solid #e9ecef;
+            text-align: left;
+            height: 50px; /* Zvětšeno z 35px */
+            box-sizing: border-box;
+        }
+
+        .cr-party-name {
+            font-size: 16px; /* Zvětšeno z 12px */
+            font-weight: 700; /* Zvětšena váha */
+            color: #212529;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap; /* Název se nezlomí na více řádků */
+            margin-right: 16px; /* Větší mezera mezi názvem a procenty */
+            display: inline-block; /* Pevný blok */
+        }
+
+        .cr-party-percent {
+            font-size: 18px; /* Zvětšeno z 14px */
+            font-weight: 800; /* Zvětšena váha */
+            color: #212529;
+            white-space: nowrap; /* Procenta se nezlomí */
+            flex-shrink: 0; /* Procenta si zachovají svou velikost */
+        }
+
+        .header {
+            height: 45px; /* Zvětšeno z 35px */
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px; /* Zvětšen padding */
+        }
+
+        .header-left {
+            font-size: 20px; /* Zvětšeno z 16px */
+            font-weight: 700;
+            color: #212529;
+            transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+        }
+
+        .header-right {
+            font-size: 16px; /* Zvětšeno z 14px */
+            font-weight: 600;
+            color: #495057;
+            transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+        }
+
+        /* Animace pro slide out */
+        .header-left.slide-out {
+            transform: translateX(-30px);
+            opacity: 0;
+        }
+
+        .header-right.slide-out {
+            transform: translateX(30px);
+            opacity: 0;
+        }
+
+        /* Animace pro slide in */
+        .header-left.slide-in {
+            transform: translateX(30px);
+            opacity: 0;
+        }
+
+        .header-right.slide-in {
+            transform: translateX(-30px);
+            opacity: 0;
+        }
+
+        .parties-container {
+            display: flex;
+            height: 115px; /* Zvětšeno z 95px */
+            align-items: center;
+            white-space: nowrap;
+            /* Animace se nastavuje dynamicky podle obsahu */
+            padding: 0 20px;
+            transform: translateX(100%); /* Začíná vpravo */
+        }
+
+        .party-block {
+            display: inline-flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px 16px 10px 16px; /* Zvětšen padding */
+            margin: 0;
+            min-width: 200px; /* Zmenšeno bez hlasů */
+            position: relative;
+            background: white;
+            border-left: 5px solid; /* Zvětšen border */
+            border-right: 2px solid #e9ecef;
+            text-align: left;
+            height: 115px; /* Zvětšeno z 95px */
+            box-sizing: border-box;
+        }
+
+        /* Horní řada: název strany (vlevo) + mandáty (vpravo) */
+        .party-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: auto; /* Zatlačí dolní řadu dolů */
+        }
+
+        .party-name {
+            font-size: 22px; /* Zvětšeno z 18px */
+            font-weight: 700;
+            color: #212529;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+            flex: 1; /* Zabere zbytek místa */
+        }
+
+        .party-mandates {
+            font-size: 32px; /* Velké číslo mandátů */
+            font-weight: 800;
+            color: #212529;
+            line-height: 1;
+            margin-left: 12px; /* Mezera od názvu */
+        }
+
+        /* Dolní řada: procenta vpravo */
+        .party-percent {
+            font-size: 26px; /* Zvětšeno z 22px */
+            font-weight: 800;
+            color: #212529;
+            line-height: 1;
+            text-align: right; /* Procenta vpravo */
+            align-self: flex-end; /* Umístí vpravo */
+        }
+
+        /* Divider mezi opakováními */
+        .divider {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px; /* Zvětšeno z 60px */
+            height: 95px; /* Zvětšeno z 76px */
+        }
+
+        .divider-dot {
+            width: 5px; /* Zvětšeno z 4px */
+            height: 5px; /* Zvětšeno z 4px */
+            background: #ced4da;
+            border-radius: 50%;
+            margin: 0 4px; /* Zvětšen margin */
+        }
+
+        /* Divider pro ČR crawl */
+        .cr-divider {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px; /* Zvětšeno z 30px */
+            height: 50px; /* Zvětšeno z 35px */
+        }
+
+        .cr-divider-dot {
+            width: 3px; /* Zvětšeno z 2px */
+            height: 3px; /* Zvětšeno z 2px */
+            background: #ced4da;
+            border-radius: 50%;
+            margin: 0 3px; /* Zvětšen margin */
+        }
+
+        /* Loading state */
+        .loading {
+            color: #666;
+            text-align: center;
+            padding: 35px; /* Zvětšen */
+            font-size: 16px; /* Zvětšeno z 14px */
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        /* Loading pro ČR crawl */
+        .cr-parties-container .loading {
+            padding: 15px; /* Zvětšen z 10px */
+            font-size: 14px; /* Zvětšeno z 12px */
+        }
+
+        /* Animace - bude se nastavovat dynamicky v JavaScript */
+        @keyframes scroll-left-dynamic {
+            0% {
+                transform: translateX(100%); /* Začíná vpravo */
+            }
+            100% {
+                /* Konec se nastavuje dynamicky aby poslední prvek úplně zmizel */
+            }
+        }
+
+        /* Pulsing animace pro "čekání na data" */
+        @keyframes waiting-pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+
+        /* Sentinel blok - zajistit úplné skrytí */
+        #crawl-sentinel {
+            opacity: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            visibility: hidden !important;
+        }
+
+        /* Sentinel blok - úplně skrytý */
+        .party-block#crawl-sentinel {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        .party-percent {
+            animation: waiting-pulse 2s infinite;
+        }
+
+        /* Animace pro ČR crawl */
+        @keyframes cr-scroll-left {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        .cr-parties-container.animate {
+            animation: cr-scroll-left 60s linear infinite; /* Zpomaleno z 30s na 60s */
+        }
+
+        /* Responsivní úpravy */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                height: 180px; /* Upraveno pro větší crawly */
+            }
+
+            .cr-crawl-container {
+                height: 60px; /* Zvětšeno */
+            }
+
+            .cr-header {
+                height: 25px; /* Zvětšeno */
+                padding: 4px 15px;
+            }
+
+            .cr-header-left {
+                font-size: 14px; /* Zvětšeno */
+            }
+
+            .cr-header-right {
+                font-size: 12px; /* Zvětšeno */
+            }
+
+            .cr-parties-container {
+                height: 35px; /* Zvětšeno */
+            }
+
+            .cr-party-block {
+                width: fit-content; /* Přesně podle obsahu i na mobilu */
+                height: 35px; /* Zvětšeno */
+                padding: 4px 12px; /* Kompaktní padding pro mobil */
+            }
+
+            .cr-party-name {
+                font-size: 12px; /* Zvětšeno */
+            }
+
+            .cr-party-percent {
+                font-size: 14px; /* Zvětšeno */
+            }
+            
+            .header {
+                height: 35px; /* Zvětšeno */
+                padding: 8px 15px; /* Zvětšen */
+            }
+            
+            .header-left {
+                font-size: 16px; /* Zvětšeno */
+            }
+            
+            .header-right {
+                font-size: 14px; /* Zvětšeno */
+            }
+            
+            .parties-container {
+                height: 90px; /* Zvětšeno */
+            }
+            
+            .party-block {
+                min-width: 160px; /* Zvětšeno */
+                height: 90px; /* Zvětšeno */
+                padding: 8px 12px 8px 12px; /* Zvětšen */
+            }
+            
+            .party-name {
+                font-size: 16px; /* Zvětšeno */
+            }
+            
+            .party-percent {
+                font-size: 22px; /* Zvětšeno */
+            }
+            
+            .party-mandates, .party-votes {
+                font-size: 11px; /* Zvětšeno */
+            }
+            
+            .party-stats-row {
+                margin: 6px 0 4px 0; /* Zvětšen */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- ČR crawl - horní tenčí -->
+        <div class="cr-crawl-container">
+            <div class="cr-header">
+                <div class="cr-header-left" id="crHeaderLeft">Výsledky voleb - Česká republika</div>
+                <div class="cr-header-right" id="crHeaderRight">sečteno: 0,00%, účast: 0,00%</div>
+            </div>
+            <div class="cr-parties-container" id="crPartiesContainer">
+                <div class="loading">Načítám celkové výsledky ČR 2025...</div>
+            </div>
+        </div>
+
+        <!-- Krajský crawl - spodní -->
+        <div class="header">
+            <div class="header-left" id="headerLeft">Výsledky voleb: Načítám kraje...</div>
+            <div class="header-right" id="headerRight">sečteno: 0,00%, účast: 0,00%</div>
+        </div>
+        <div class="parties-container" id="partiesContainer">
+            <div class="loading">Připojuji k API krajů 2025...</div>
+        </div>
+    </div>
+
+    <script>
+        let regionsData = [];
+        let currentRegionIndex = 0;
+        let currentRegion = null;
+        let crData = null;
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return "0";
+            return num.toLocaleString('cs-CZ');
+        }
+
+        function formatPercent(num) {
+            if (num === null || num === undefined) return "0.0";
+            return num.toFixed(2);
+        }
+
+        function getMandatesText(num) {
+            if (num === null || num === undefined || num === 0) return "mandátů";
+            
+            // České skloňování
+            const lastDigit = num % 10;
+            const lastTwoDigits = num % 100;
+            
+            // Výjimky pro 11, 12, 13, 14
+            if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+                return "mandátů";
+            }
+            
+            // Základní pravidla
+            if (lastDigit === 1) {
+                return "mandát";
+            } else if (lastDigit >= 2 && lastDigit <= 4) {
+                return "mandáty";
+            } else {
+                return "mandátů";
+            }
+        }
+
+        function updateHeader(region) {
+            const headerLeft = document.getElementById('headerLeft');
+            const headerRight = document.getElementById('headerRight');
+            
+            const turnout = region.turnout || {};
+            const counted = turnout.precinctsFinishedPercent || 0;
+            const voterTurnout = turnout.voterTurnout || 0;
+            
+            
+            // Fáze 1: Slide out (mizí vlevo/vpravo)
+            headerLeft.classList.add('slide-out');
+            headerRight.classList.add('slide-out');
+            
+            setTimeout(() => {
+                // Fáze 2: Změna obsahu
+                headerLeft.innerHTML = `${region.name}`;
+                headerRight.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
+                
+                // Fáze 3: Příprava slide in (začíná z opačné strany)
+                headerLeft.classList.remove('slide-out');
+                headerRight.classList.remove('slide-out');
+                headerLeft.classList.add('slide-in');
+                headerRight.classList.add('slide-in');
+                
+                // Fáze 4: Slide in (vjíždí do normální pozice)
+                setTimeout(() => {
+                    headerLeft.classList.remove('slide-in');
+                    headerRight.classList.remove('slide-in');
+                }, 50);
+                
+                }, 200); // Doba slide-out animace (zkráceno z 300ms)
+        }
+
+        async function loadCrData() {
+            const isDevMode = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+            const debugLog = isDevMode ? console.log : () => {};
+            
+            debugLog('🔄 Načítám data za celou ČR...');
+            
+            try {
+                let response;
+                let data;
+                
+                const corsProxies = [
+                    'https://cors-anywhere.herokuapp.com/',
+                    'https://api.allorigins.win/raw?url=',
+                    'https://thingproxy.freeboard.io/fetch/'
+                ];
+                
+                try {
+                    // Pokus o přímé načtení
+                    debugLog('🎯 Zkouším přímé načtení ČR dat...');
+                    response = await fetch('https://api.elections.seznam.cz/parliament/2025/results/cr');
+                    if (!response.ok) throw new Error('Direct fetch failed');
+                    data = await response.json();
+                    debugLog('✅ Přímé načtení ČR dat úspěšné!');
+                } catch (directError) {
+                    debugLog('⚠️ Přímé načtení ČR dat selhalo, zkouším CORS proxy...');
+                    
+                    let lastError = directError;
+                    
+                    for (let i = 0; i < corsProxies.length; i++) {
+                        try {
+                            debugLog(`🔄 ČR Proxy ${i + 1}/${corsProxies.length}: ${corsProxies[i].slice(0, 30)}...`);
+                            const proxyUrl = corsProxies[i] + 'https://api.elections.seznam.cz/parliament/2025/results/cr';
+                            response = await fetch(proxyUrl);
+                            
+                            if (!response.ok) {
+                                if (response.status === 403 && corsProxies[i].includes('cors-anywhere')) {
+                                    throw new Error('CORS-anywhere requires permission. Visit https://cors-anywhere.herokuapp.com/corsdemo first.');
+                                }
+                                throw new Error(`ČR Proxy ${i + 1} failed with status ${response.status}`);
+                            }
+                            
+                            data = await response.json();
+                            debugLog(`✅ ČR Proxy ${i + 1} úspěšné!`);
+                            break;
+                            
+                        } catch (proxyError) {
+                            debugLog(`❌ ČR Proxy ${i + 1} selhalo: ${proxyError.message}`);
+                            lastError = proxyError;
+                            
+                            if (i === corsProxies.length - 1) {
+                                throw new Error(`All ČR proxy attempts failed. Last error: ${lastError.message}`);
+                            }
+                        }
+                    }
+                }
+                
+                // Zpracovat data
+                crData = {
+                    turnout: data.turnout,
+                    parties: data._items
+                        .filter(party => party.shortName8 && party.shortName8.length > 1) // Zobrazit všechny strany s názvem
+                        .map(party => ({
+                            shortName8: party.shortName8,
+                            color: party.vParty.color || '#6c757d',
+                            votes: party.votes,
+                            votesPercent: party.votesPercent,
+                            numOfMandates: party.numOfMandates || 0
+                        }))
+                        .sort((a, b) => (b.votesPercent || 0) - (a.votesPercent || 0)) // Řazení s null jako 0
+                };
+                
+                debugLog(`✅ ČR data zpracována: ${crData.parties.length} stran`);
+                
+                // Spustit ČR crawl
+                startCrCrawl();
+                
+            } catch (error) {
+                debugLog(`❌ Načítání ČR dat selhalo: ${error.message}`);
+                
+                // Fallback pro ČR data 2025 (před volbami - zobrazit s nulami)
+                crData = {
+                    turnout: { voterTurnout: 0.0, precinctsFinishedPercent: 0.0 },
+                    parties: [
+                        { shortName8: "ANO", color: "#261060", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "SPOLU", color: "#00EA29", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "Piráti", color: "#6E6E6E", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "SPD", color: "#C05F2F", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "PŘÍSAHA", color: "#0240C6", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "Stačilo!", color: "#F90A0E", votes: null, votesPercent: null, numOfMandates: 0 }
+                    ]
+                };
+                
+                debugLog(`✅ ČR Fallback data připravena: ${crData.parties.length} stran`);
+                startCrCrawl();
+            }
+        }
+
+        function startCrCrawl() {
+            if (!crData) return;
+            
+            // Aktualizovat ČR header
+            const crHeaderLeft = document.getElementById('crHeaderLeft');
+            const crHeaderRight = document.getElementById('crHeaderRight');
+            const turnout = crData.turnout || {};
+            const counted = turnout.precinctsFinishedPercent || 0;
+            const voterTurnout = turnout.voterTurnout || 0;
+            
+            crHeaderLeft.innerHTML = 'Česká republika';
+            crHeaderRight.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
+            
+            // Generovat ČR crawl content
+            generateCrCrawlContent();
+        }
+
+        function generateCrCrawlContent() {
+            const crPartiesContainer = document.getElementById('crPartiesContainer');
+            
+            if (!crData || !crData.parties) {
+                crPartiesContainer.innerHTML = '<div class="loading">Žádná data pro ČR</div>';
+                return;
+            }
+            
+            let content = '';
+            
+            // Opakovat obsah 3x pro plynulý loop
+            for (let repeat = 0; repeat < 3; repeat++) {
+                crData.parties.forEach((party, index) => {
+                    const displayName = party.shortName8; // Zobrazí celý název - bloky se přizpůsobí
+                    const percent = formatPercent(party.votesPercent);
+                    
+                    content += `
+                        <div class="cr-party-block" style="border-left-color: ${party.color};">
+                            <div class="cr-party-name">${displayName}</div>
+                            <div class="cr-party-percent">${percent}%</div>
+                        </div>
+                    `;
+                });
+                
+                // Divider mezi opakováními (kromě posledního)
+                if (repeat < 2) {
+                    content += `
+                        <div class="cr-divider">
+                            <div class="cr-divider-dot"></div>
+                            <div class="cr-divider-dot"></div>
+                            <div class="cr-divider-dot"></div>
+                        </div>
+                    `;
+                }
+            }
+            
+            crPartiesContainer.innerHTML = content;
+            
+            // Spustit animaci
+            setTimeout(() => {
+                crPartiesContainer.classList.add('animate');
+            }, 2000); // Zpomaleno z 1s na 2s pro postupné načtení
+        }
+
+        async function loadRegionsData() {
+            // Debug režim (pouze pro development)
+            const isDevMode = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+            const debugLog = isDevMode ? console.log : () => {};
+            
+            debugLog('🔄 Načítám data krajů...');
+            
+            try {
+                
+                let response;
+                let data;
+                
+                // Seznam CORS proxy serverů (v pořadí priority)
+                const corsProxies = [
+                    'https://cors-anywhere.herokuapp.com/',
+                    'https://api.allorigins.win/raw?url=',
+                    'https://thingproxy.freeboard.io/fetch/'
+                ];
+                
+                try {
+                    // Pokus o přímé načtení (funguje v produkci/vMix)
+                    debugLog('🎯 Zkouším přímé načtení...');
+                    response = await fetch('https://api.elections.seznam.cz/parliament/2025/regions');
+                    if (!response.ok) throw new Error('Direct fetch failed');
+                    data = await response.json();
+                    debugLog('✅ Přímé načtení úspěšné!');
+                } catch (directError) {
+                    debugLog('⚠️ Přímé načtení selhalo, zkouším CORS proxy...');
+                    
+                    // Fallback na CORS proxy servery
+                    let lastError = directError;
+                    
+                    for (let i = 0; i < corsProxies.length; i++) {
+                        try {
+                            debugLog(`🔄 Proxy ${i + 1}/${corsProxies.length}: ${corsProxies[i].slice(0, 30)}...`);
+                            const proxyUrl = corsProxies[i] + 'https://api.elections.seznam.cz/parliament/2025/regions';
+                            response = await fetch(proxyUrl);
+                            
+                            if (!response.ok) {
+                                if (response.status === 403 && corsProxies[i].includes('cors-anywhere')) {
+                                    // Specifická zpráva pro cors-anywhere
+                                    throw new Error('CORS-anywhere requires permission. Visit https://cors-anywhere.herokuapp.com/corsdemo first.');
+                                }
+                                throw new Error(`Proxy ${i + 1} failed with status ${response.status}`);
+                            }
+                            
+                            data = await response.json();
+                            debugLog(`✅ Proxy ${i + 1} úspěšné!`);
+                            break; // Úspěch - ukončit smyčku
+                            
+                        } catch (proxyError) {
+                            debugLog(`❌ Proxy ${i + 1} selhalo: ${proxyError.message}`);
+                            lastError = proxyError;
+                            
+                            // Pokud je to poslední proxy, throw error
+                            if (i === corsProxies.length - 1) {
+                                throw new Error(`All proxy attempts failed. Last error: ${lastError.message}`);
+                            }
+                            // Jinak pokračovat na další proxy
+                        }
+                    }
+                }
+                
+                
+                regionsData = data._items.map(region => ({
+                    number: region.number,
+                    name: region.name,
+                    turnout: region.turnout,
+                    parties: region.parties
+                        .filter(party => party.shortName8 && party.shortName8.length > 1)
+                        .map(party => ({
+                            shortName8: party.shortName8,
+                            color: party.vParty.color || '#6c757d',
+                            votes: party.results.votes,
+                            votesPercent: party.results.votesPercent,
+                            numOfMandates: party.numOfMandates || 0
+                        }))
+                        .sort((a, b) => (b.votesPercent || 0) - (a.votesPercent || 0)) // Seřadit podle procent (null = 0)
+                }));
+                
+                
+                debugLog(`✅ Data zpracována: ${regionsData.length} krajů`);
+                
+                // Začít s prvním krajem
+                currentRegionIndex = 0;
+                startRegionCycling();
+                
+            } catch (error) {
+                debugLog(`❌ Načítání dat selhalo: ${error.message}`);
+                
+                // Informovat uživatele o problému
+                if (error.message.includes('cors-anywhere requires permission')) {
+                    alert('⚠️ CORS chyba!\n\nPro lokální vývoj navštivte:\nhttps://cors-anywhere.herokuapp.com/corsdemo\n\na klikněte na "Request temporary access to the demo server".\n\nPak obnovte stránku.');
+                }
+                
+                debugLog('🔄 Používám fallback testovací data...');
+                
+                // Fallback na testovací data 2025 (před volbami - zobrazit s nulami)
+                regionsData = [
+                    {
+                        number: 1,
+                        name: "Hlavní město Praha",
+                        turnout: { voterTurnout: 0.0, precinctsFinishedPercent: 0.0 },
+                        parties: [
+                            { shortName8: "ANO", color: "#261060", votes: null, votesPercent: null, numOfMandates: 0 },
+                            { shortName8: "SPOLU", color: "#00EA29", votes: null, votesPercent: null, numOfMandates: 0 },
+                            { shortName8: "Piráti", color: "#6E6E6E", votes: null, votesPercent: null, numOfMandates: 0 },
+                            { shortName8: "SPD", color: "#C05F2F", votes: null, votesPercent: null, numOfMandates: 0 }
+                        ]
+                    }
+                ];
+                
+                debugLog(`✅ Fallback data připravena: ${regionsData.length} krajů`);
+                startRegionCycling();
+            }
+        }
+
+        function startRegionCycling() {
+            if (regionsData.length === 0) return;
+            
+            displayCurrentRegion(false); // První načtení s animací headeru
+        }
+
+        // Globální proměnná pro monitoring animace
+        let animationMonitorId = null;
+
+        function setupSentinelMonitoring() {
+            // Zrušit starý monitoring pokud existuje
+            if (animationMonitorId) {
+                cancelAnimationFrame(animationMonitorId);
+                animationMonitorId = null;
+            }
+
+            const sentinelElement = document.getElementById('crawl-sentinel');
+            if (!sentinelElement) {
+                return;
+            }
+            
+            let lastCheck = Date.now();
+            let hasPassedViewport = false;
+            
+            // Monitoring funkcí pomocí requestAnimationFrame
+            function monitorSentinel() {
+                const now = Date.now();
+                
+                // Kontrolovat každých 100ms pro performance
+                if (now - lastCheck > 100) {
+                    const rect = sentinelElement.getBoundingClientRect();
+                    const isCompletelyLeft = rect.right < 0;
+                    lastCheck = now;
+                    
+                    // Když sentinel úplně zmizel vlevo
+                    if (isCompletelyLeft && !hasPassedViewport) {
+                        hasPassedViewport = true;
+                        
+                        // Zastavit monitoring
+                        cancelAnimationFrame(animationMonitorId);
+                        animationMonitorId = null;
+                        
+                        // Okamžitě změnit na další kraj
+                        currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
+                        const nextRegion = regionsData[currentRegionIndex];
+                        
+                        // Spustit animaci headeru
+                        updateHeader(nextRegion);
+                        
+                        // Načíst nový crawl
+                        setTimeout(() => {
+                            displayCurrentRegion(true); // Header už byl animován
+                        }, 300);
+                        
+                        return; // Ukončit monitoring
+                    }
+                }
+                
+                // Pokračovat v monitoringu
+                animationMonitorId = requestAnimationFrame(monitorSentinel);
+            }
+            
+            // Spustit monitoring
+            animationMonitorId = requestAnimationFrame(monitorSentinel);
+        }
+
+        function displayCurrentRegion(isHeaderAlreadyAnimated = false) {
+            currentRegion = regionsData[currentRegionIndex];
+            
+            
+            // Aktualizovat header (animace jen pokud ještě nebyla provedena)
+            if (!isHeaderAlreadyAnimated) {
+                updateHeader(currentRegion);
+            }
+            
+            // Generovat crawl obsah
+            generateCrawlContent();
+        }
+
+        function generateCrawlContent() {
+            const partiesContainer = document.getElementById('partiesContainer');
+            
+            if (!currentRegion || !currentRegion.parties) {
+                partiesContainer.innerHTML = '<div class="loading">Žádná data pro aktuální kraj</div>';
+                return;
+            }
+            
+            // Smooth update - přidat updating class
+            partiesContainer.classList.add('updating');
+            
+            setTimeout(() => {
+                let content = '';
+                
+                // Vytvořit obsah pouze jednou (ne opakování)
+                currentRegion.parties.forEach((party, index) => {
+                    const displayName = party.shortName8.length > 15 ? party.shortName8.substring(0, 10) : party.shortName8;
+                    
+                    const percent = formatPercent(party.votesPercent);
+                    const mandates = party.numOfMandates || 0;
+                    
+                    content += `
+                        <div class="party-block" style="border-left-color: ${party.color};">
+                            <div class="party-header">
+                                <div class="party-name">${displayName}</div>
+                                <div class="party-mandates">${mandates}</div>
+                            </div>
+                            <div class="party-percent">${percent}%</div>
+                        </div>
+                    `;
+                });
+                
+                // Přidat VIDITELNÝ sentinel blok na konec
+                content += `
+                    <div id="crawl-sentinel" class="party-block" style="
+                        width: 160px !important;
+                        min-width: 160px !important;
+                    ">
+                        <div class="party-name">SENTINEL</div>
+                        <div class="party-stats-row">
+                            <div class="party-percent">END</div>
+                            <div class="party-mandates">MARKER</div>
+                        </div>
+                        <div class="party-votes">BLOCK</div>
+                    </div>
+                `;
+                
+                partiesContainer.innerHTML = content;
+                partiesContainer.classList.remove('updating');
+                
+                // Nastavit monitoring pro sentinel blok
+                setupSentinelMonitoring();
+                
+                // Spustit animaci po načtení obsahu
+                startCrawlAnimation();
+                
+            }, 150);
+        }
+
+        function startCrawlAnimation() {
+            const partiesContainer = document.getElementById('partiesContainer');
+            
+            // Vypočítat šířky
+            const viewportWidth = window.innerWidth;
+            const contentWidth = partiesContainer.scrollWidth;
+            
+            // Vypočítat správný konečný translateX tak, aby poslední prvek úplně zmizel vlevo
+            // Od -100% ještě odečteme poměr šířky obsahu k viewportu
+            const finalTranslatePercent = -100 - (contentWidth / viewportWidth * 100);
+            
+            // Vypočítar dobu animace (rychlost: 80px za sekundu - pomalejší pro lepší čitelnost)
+            // Celková vzdálenost je od 100% doprava do finalTranslatePercent vlevo
+            const totalDistance = viewportWidth + contentWidth; // v pixelech
+            const animationDuration = Math.max(totalDistance / 80, 15); // sekundy (minimum 15s pro čitelnost, rychlost 80px/s)
+            
+            
+            // Vytvořit dynamické CSS keyframe
+            const keyframeName = 'scroll-left-' + Date.now();
+            const keyframeCSS = `
+                @keyframes ${keyframeName} {
+                    0% { transform: translateX(100%); }
+                    100% { transform: translateX(${finalTranslatePercent}%); }
+                }
+            `;
+            
+            // Přidat keyframe do stylu
+            const styleElement = document.createElement('style');
+            styleElement.textContent = keyframeCSS;
+            document.head.appendChild(styleElement);
+            
+            // Resetovat pozici na začátek (vpravo)
+            partiesContainer.style.transform = 'translateX(100%)';
+            partiesContainer.style.animation = 'none';
+            
+            // Spustit animaci
+            setTimeout(() => {
+                const startTime = new Date();
+                const endTime = new Date(startTime.getTime() + (animationDuration * 1000));
+                
+                partiesContainer.style.animation = `${keyframeName} ${animationDuration}s linear`;
+                
+                // FALLBACK: Přidat animationend listener jako záložní řešení
+                const handleAnimationEnd = (event) => {
+                    if (event.target !== partiesContainer) return;
+                    
+                    // Odebrat listener
+                    partiesContainer.removeEventListener('animationend', handleAnimationEnd);
+                    
+                    // Pouze pokud monitoring selhal (stále běží)
+                    if (animationMonitorId) {
+                        // Zrušit neúspěšný monitoring
+                        cancelAnimationFrame(animationMonitorId);
+                        animationMonitorId = null;
+                        
+                        // Pokračovat změnou kraje
+                        currentRegionIndex = (currentRegionIndex + 1) % regionsData.length;
+                        const nextRegion = regionsData[currentRegionIndex];
+                        
+                        updateHeader(nextRegion);
+                        setTimeout(() => {
+                            displayCurrentRegion(true);
+                        }, 300);
+                    }
+                };
+                
+                partiesContainer.addEventListener('animationend', handleAnimationEnd);
+                
+                // Vyčistit keyframe po animaci
+                setTimeout(() => {
+                    try {
+                        if (styleElement.parentNode) {
+                            document.head.removeChild(styleElement);
+                        }
+                    } catch (error) {
+                        // Keyframe cleanup skipped
+                    }
+                }, animationDuration * 1000 + 1000);
+            }, 50);
+        }
+
+        // Spustit načítání dat po načtení stránky
+        document.addEventListener('DOMContentLoaded', () => {
+            // Spustit oba crawly současně
+            loadCrData();     // ČR crawl
+            loadRegionsData(); // Krajský crawl
+        });
+        
+        // Aktualizovat data každých 5 minut (pro případné změny)
+        setInterval(() => {
+            loadCrData();
+            loadRegionsData();
+        }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
