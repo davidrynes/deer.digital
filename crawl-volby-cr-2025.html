@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crawl ČR 2025</title>
+    
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <!-- 
+        CRAWL PRO VOLBY 2025 - POUZE ČR
+        
+        API endpoint:
+        - ČR: https://api.elections.seznam.cz/parliament/2025/results/cr
+        
+        CORS řešení: 
+        1. Pokusí se o přímé načtení z API
+        2. Při selhání použije CORS proxy (cors-anywhere.herokuapp.com)
+        3. Při selhání obou použije fallback testovací data
+        
+        Zobrazuje všechny strany s barvami, null hodnoty jako nuly.
+        Pro aktivaci CORS proxy navštivte: https://cors-anywhere.herokuapp.com/corsdemo
+    -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: transparent;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .dashboard-container {
+            width: 100%;
+            height: 165px; /* Zvětšeno pro 115px bloky + 50px header */
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+        }
+
+        /* Header pro ČR crawl */
+        .cr-header {
+            height: 50px; /* Zvětšeno pro větší viditelnost */
+            background: #e92929;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+        }
+
+        .cr-header-content {
+            font-size: 24px; /* Zvětšeno pro lepší viditelnost */
+            font-weight: 600;
+            color: #fafafa;
+        }
+
+        .cr-header-separator {
+            margin: 0 12px;
+            color: #fafafa;
+            font-weight: 400;
+        }
+
+        .cr-header-stats {
+            font-size: 18px; /* Zvětšeno pro lepší viditelnost */
+            font-weight: 500;
+            color: #fafafa;
+        }
+
+        /* Kontejner pro parties ČR crawl */
+        .cr-parties-container {
+            display: flex;
+            height: 115px; /* Stejná výška jako krajský crawl */
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+            background: #f8f9fa;
+            white-space: nowrap;
+            padding: 0 20px;
+            transform: translateX(100%);
+        }
+
+        .cr-party-block {
+            display: inline-flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px 16px 10px 16px;
+            margin: 0;
+            min-width: 200px;
+            position: relative;
+            background: white;
+            border-left: 5px solid;
+            border-right: 2px solid #e9ecef;
+            text-align: left;
+            height: 115px; /* Stejná výška jako krajský crawl */
+            box-sizing: border-box;
+        }
+
+        .cr-party-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: auto;
+        }
+
+        .cr-party-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: #212529;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+            flex: 1;
+        }
+
+        .cr-party-mandates {
+            font-size: 32px;
+            font-weight: 800;
+            color: #212529;
+            line-height: 1;
+            margin-left: 12px;
+        }
+
+        .cr-party-percent {
+            font-size: 36px;
+            font-weight: 800;
+            color: #212529;
+            line-height: 1;
+            text-align: right;
+        }
+
+        .cr-divider {
+            width: 2px;
+            height: 50px;
+            background: #e9ecef;
+            margin: 0 8px;
+            flex-shrink: 0;
+        }
+
+        .cr-divider-dot {
+            width: 4px;
+            height: 4px;
+            background: #6c757d;
+            border-radius: 50%;
+            margin: 0 4px;
+            flex-shrink: 0;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 18px;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        /* Animace pro scroll */
+        @keyframes cr-scroll-left {
+            0% {
+                transform: translateX(100%);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        .cr-scroll-left {
+            animation: cr-scroll-left 60s linear infinite;
+        }
+
+        /* Smooth transitions pro updates */
+        .updating {
+            opacity: 0.7;
+            transition: opacity 0.15s ease-in-out;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                height: 125px; /* Zvětšeno pro 90px bloky + 35px header */
+            }
+
+            .cr-header {
+                height: 35px; /* Menší na mobilu */
+                padding: 8px 15px;
+            }
+
+            .cr-header-content {
+                font-size: 18px; /* Menší na mobilu */
+            }
+
+            .cr-header-stats {
+                font-size: 14px; /* Menší na mobilu */
+            }
+
+            .cr-header-separator {
+                margin: 0 8px; /* Menší mezera na mobilu */
+            }
+
+            .cr-parties-container {
+                height: 90px; /* Stejná výška jako krajský crawl na mobilu */
+            }
+
+            .cr-party-block {
+                min-width: 160px;
+                height: 90px; /* Stejná výška jako krajský crawl na mobilu */
+                padding: 8px 12px 8px 12px;
+            }
+
+            .cr-party-name {
+                font-size: 14px; /* Menší na mobilu */
+            }
+
+            .cr-party-mandates {
+                font-size: 24px; /* Menší na mobilu */
+            }
+
+            .cr-party-percent {
+                font-size: 16px; /* Menší na mobilu */
+            }
+
+            .loading {
+                font-size: 14px; /* Menší na mobilu */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- ČR crawl - hlavní -->
+        <div class="cr-crawl-container">
+            <div class="cr-header">
+                <div class="cr-header-content" id="crHeaderContent">Česká republika</div>
+                <div class="cr-header-separator">|</div>
+                <div class="cr-header-stats" id="crHeaderStats">sečteno: 0,00%, účast: 0,00%</div>
+            </div>
+            <div class="cr-parties-container" id="crPartiesContainer">
+                <div class="loading">Načítám celkové výsledky ČR 2025...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let crData = null;
+        let isUpdating = false;
+
+        // Formátování čísel pro českou lokalizaci
+        function formatNumber(num) {
+            if (num === null || num === undefined) return "0";
+            return new Intl.NumberFormat('cs-CZ').format(num);
+        }
+
+        // Formátování procent
+        function formatPercent(num) {
+            if (num === null || num === undefined) return "0.0";
+            return parseFloat(num).toFixed(1);
+        }
+
+        async function loadCrData() {
+            const isDevMode = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+            const debugLog = isDevMode ? console.log : () => {};
+            
+            debugLog('🔄 Načítám data za celou ČR...');
+            
+            try {
+                let response;
+                
+                // Pokus 1: Přímé načtení z API
+                try {
+                    response = await fetch('https://api.elections.seznam.cz/parliament/2025/results/cr');
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    debugLog('✅ Přímé načtení z API úspěšné');
+                } catch (error) {
+                    debugLog('❌ Přímé načtení selhalo, zkouším CORS proxy...');
+                    
+                    // Pokus 2: CORS proxy
+                    const corsProxies = [
+                        'https://cors-anywhere.herokuapp.com/',
+                        'https://api.allorigins.win/raw?url=',
+                        'https://thingproxy.freeboard.io/fetch/'
+                    ];
+                    
+                    let proxySuccess = false;
+                    for (const proxy of corsProxies) {
+                        try {
+                            const proxyUrl = proxy + encodeURIComponent('https://api.elections.seznam.cz/parliament/2025/results/cr');
+                            response = await fetch(proxyUrl);
+                            if (response.ok) {
+                                debugLog(`✅ CORS proxy úspěšné: ${proxy}`);
+                                proxySuccess = true;
+                                break;
+                            }
+                        } catch (proxyError) {
+                            debugLog(`❌ CORS proxy selhalo: ${proxy}`);
+                            continue;
+                        }
+                    }
+                    
+                    if (!proxySuccess) {
+                        throw new Error('Všechny CORS proxy selhaly');
+                    }
+                }
+                
+                const data = await response.json();
+                debugLog('📊 Data načtena:', data);
+                
+                // Zpracování dat - zobrazit všechny strany i s null hodnotami
+                // API 2025 má data v _items místo parties a barvy v vParty.color
+                crData = {
+                    turnout: data.turnout || {},
+                    parties: data._items
+                        .filter(party => party.shortName8 && party.shortName8.length > 1) // Zobrazit všechny strany s názvem
+                        .map(party => ({
+                            shortName8: party.shortName8,
+                            color: party.vParty?.color || '#6c757d',
+                            votes: party.votes,
+                            votesPercent: party.votesPercent,
+                            numOfMandates: party.numOfMandates || 0
+                        }))
+                        .sort((a, b) => (b.votesPercent || 0) - (a.votesPercent || 0)) // Řazení s null jako 0
+                };
+                
+                debugLog(`✅ ČR data připravena: ${crData.parties.length} stran`);
+                startCrCrawl();
+                
+            } catch (error) {
+                debugLog('❌ Chyba při načítání dat:', error);
+                
+                // Fallback pro ČR data 2025 (před volbami - zobrazit s nulami)
+                crData = {
+                    turnout: { voterTurnout: 0.0, precinctsFinishedPercent: 0.0 },
+                    parties: [
+                        { shortName8: "ANO", color: "#261060", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "SPOLU", color: "#00EA29", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "Piráti", color: "#6E6E6E", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "SPD", color: "#C05F2F", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "PŘÍSAHA", color: "#0240C6", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "Stačilo!", color: "#F90A0E", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "KORUNA ČESKÁ", color: "#FFD700", votes: null, votesPercent: null, numOfMandates: 0 },
+                        { shortName8: "KSČM", color: "#DC143C", votes: null, votesPercent: null, numOfMandates: 0 }
+                    ]
+                };
+                
+                debugLog(`✅ ČR Fallback data připravena: ${crData.parties.length} stran`);
+                startCrCrawl();
+            }
+        }
+
+        function startCrCrawl() {
+            if (!crData) return;
+            
+            // Aktualizovat ČR header
+            const crHeaderStats = document.getElementById('crHeaderStats');
+            const turnout = crData.turnout || {};
+            const counted = turnout.precinctsFinishedPercent || 0;
+            const voterTurnout = turnout.voterTurnout || 0;
+            
+            crHeaderStats.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
+            
+            // Generovat ČR crawl content
+            generateCrCrawlContent();
+        }
+
+        function generateCrCrawlContent() {
+            const container = document.getElementById('crPartiesContainer');
+            
+            // Smooth transition pro update
+            if (isUpdating) {
+                container.classList.add('updating');
+            }
+            
+            setTimeout(() => {
+                let content = '';
+                
+                // Vytvořit obsah pouze jednou (ne opakování)
+                crData.parties.forEach((party, index) => {
+                    const displayName = party.shortName8 || 'Neznámá strana';
+                    const percent = formatPercent(party.votesPercent);
+                    const mandates = party.numOfMandates || 0;
+                    
+                    content += `
+                        <div class="cr-party-block" style="border-left-color: ${party.color || '#000000'}">
+                            <div class="cr-party-header">
+                                <div class="cr-party-name">${displayName}</div>
+                                <div class="cr-party-mandates">${mandates}</div>
+                            </div>
+                            <div class="cr-party-percent">${percent}%</div>
+                        </div>
+                    `;
+                });
+                
+                // Opakovat obsah 3x pro plynulou smyčku
+                const repeatedContent = content + content + content;
+                
+                container.innerHTML = repeatedContent;
+                
+                // Spustit animaci po načtení obsahu
+                setTimeout(() => {
+                    container.classList.add('cr-scroll-left');
+                }, 100);
+                
+                // Odstranit updating class
+                if (isUpdating) {
+                    setTimeout(() => {
+                        container.classList.remove('updating');
+                    }, 150);
+                }
+                
+            }, isUpdating ? 150 : 0);
+        }
+
+        // Inicializace při načtení stránky
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCrData();
+        });
+
+        // Automatické obnovování každých 30 sekund
+        setInterval(() => {
+            if (!isUpdating) {
+                isUpdating = true;
+                loadCrData();
+                setTimeout(() => {
+                    isUpdating = false;
+                }, 1000);
+            }
+        }, 30000); // 30 sekund
+    </script>
+</body>
+</html>
