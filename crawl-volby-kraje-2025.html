@@ -202,24 +202,16 @@
             display: inline-flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 12px 16px 10px 16px; /* Zvětšen padding */
+            padding: 6px 16px;
             margin: 0;
-            min-width: 200px; /* Zmenšeno bez hlasů */
+            width: 180px;
             position: relative;
             background: white;
-            border-left: 5px solid; /* Zvětšen border */
-            border-right: 2px solid #e9ecef;
+            border-left: 4px solid;
+            border-right: 1px solid #e9ecef;
             text-align: left;
             height: 115px; /* Zvětšeno z 95px */
             box-sizing: border-box;
-        }
-
-        /* Horní řada: název strany (vlevo) + mandáty (vpravo) */
-        .party-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: auto; /* Zatlačí dolní řadu dolů */
         }
 
         .party-name {
@@ -228,26 +220,17 @@
             color: #212529;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            line-height: 1.2;
-            flex: 1; /* Zabere zbytek místa */
+            white-space: nowrap;
+            display: inline-block;
         }
 
-        .party-mandates {
-            font-size: 32px; /* Velké číslo mandátů */
-            font-weight: 800;
-            color: #212529;
-            line-height: 1;
-            margin-left: 12px; /* Mezera od názvu */
-        }
-
-        /* Dolní řada: procenta vpravo */
         .party-percent {
             font-size: 36px; /* Zvětšeno z 22px */
             font-weight: 800;
             color: #212529;
-            line-height: 1;
-            text-align: right; /* Procenta vpravo */
-            align-self: flex-end; /* Umístí vpravo */
+            white-space: nowrap;
+            text-align: right;
+            align-self: flex-end;
         }
 
         /* Divider mezi opakováními */
@@ -413,9 +396,9 @@
             }
             
             .party-block {
-                min-width: 160px; /* Zvětšeno */
+                width: fit-content;
                 height: 90px; /* Zvětšeno */
-                padding: 8px 12px 8px 12px; /* Zvětšen */
+                padding: 4px 12px;
             }
             
             .party-name {
@@ -424,14 +407,6 @@
             
             .party-percent {
                 font-size: 22px; /* Zvětšeno */
-            }
-            
-            .party-mandates, .party-votes {
-                font-size: 11px; /* Zvětšeno */
-            }
-            
-            .party-stats-row {
-                margin: 6px 0 4px 0; /* Zvětšen */
             }
         }
     </style>
@@ -903,14 +878,10 @@
                     const displayName = party.shortName8.length > 9 ? party.shortName8.substring(0, 9) + "." : party.shortName8;
                     
                     const percent = formatPercent(party.votesPercent);
-                    const mandates = party.numOfMandates || 0;
                     
                     content += `
                         <div class="party-block" style="border-left-color: ${party.color};">
-                            <div class="party-header">
-                                <div class="party-name">${displayName}</div>
-                                <div class="party-mandates">${mandates}</div>
-                            </div>
+                            <div class="party-name">${displayName}</div>
                             <div class="party-percent">${percent}%</div>
                         </div>
                     `;
