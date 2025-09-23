@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crawl ČR + Kraje 2025</title>
+    
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
     <!-- 
         CRAWL PRO VOLBY 2025
         
@@ -27,7 +32,7 @@
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: transparent;
             overflow: hidden;
             margin: 0;
@@ -61,24 +66,29 @@
         /* Header pro ČR crawl */
         .cr-header {
             height: 30px; /* Zvětšeno z 25px */
-            background: #e9ecef;
+            background: #e92929;
             border-bottom: 1px solid #dee2e6;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 6px 20px; /* Zvětšen padding */
+            padding: 12px 20px; /* Zvětšen padding */
         }
 
-        .cr-header-left {
-            font-size: 16px; /* Zvětšeno z 14px */
+        .cr-header-content {
+            font-size: 20px; /* Zvětšeno z 14px */
             font-weight: 600;
-            color: #212529;
+            color: #fafafa;
         }
 
-        .cr-header-right {
-            font-size: 14px; /* Zvětšeno z 12px */
+        .cr-header-separator {
+            margin: 0 12px;
+            color: #fafafa;
+            font-weight: 400;
+        }
+
+        .cr-header-stats {
+            font-size: 16px; /* Zvětšeno z 12px */
             font-weight: 500;
-            color: #495057;
+            color: #fafafa;
         }
 
         /* Kontejner pro parties ČR crawl */
@@ -133,18 +143,23 @@
             border-bottom: 2px solid #e9ecef;
             display: flex;
             align-items: center;
-            justify-content: space-between;
             padding: 12px 20px; /* Zvětšen padding */
         }
 
-        .header-left {
+        .header-content {
             font-size: 20px; /* Zvětšeno z 16px */
             font-weight: 700;
             color: #212529;
             transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
         }
 
-        .header-right {
+        .header-separator {
+            margin: 0 12px;
+            color: #6c757d;
+            font-weight: 400;
+        }
+
+        .header-stats {
             font-size: 16px; /* Zvětšeno z 14px */
             font-weight: 600;
             color: #495057;
@@ -152,23 +167,23 @@
         }
 
         /* Animace pro slide out */
-        .header-left.slide-out {
+        .header-content.slide-out {
             transform: translateX(-30px);
             opacity: 0;
         }
 
-        .header-right.slide-out {
+        .header-stats.slide-out {
             transform: translateX(30px);
             opacity: 0;
         }
 
         /* Animace pro slide in */
-        .header-left.slide-in {
+        .header-content.slide-in {
             transform: translateX(30px);
             opacity: 0;
         }
 
-        .header-right.slide-in {
+        .header-stats.slide-in {
             transform: translateX(-30px);
             opacity: 0;
         }
@@ -346,12 +361,16 @@
                 padding: 4px 15px;
             }
 
-            .cr-header-left {
-                font-size: 14px; /* Zvětšeno */
+            .cr-header-content {
+                font-size: 20px; /* Zvětšeno */
             }
 
-            .cr-header-right {
+            .cr-header-stats {
                 font-size: 12px; /* Zvětšeno */
+            }
+
+            .cr-header-separator {
+                margin: 0 8px; /* Menší mezera na mobilu */
             }
 
             .cr-parties-container {
@@ -377,12 +396,16 @@
                 padding: 8px 15px; /* Zvětšen */
             }
             
-            .header-left {
+            .header-content {
                 font-size: 16px; /* Zvětšeno */
             }
             
-            .header-right {
+            .header-stats {
                 font-size: 14px; /* Zvětšeno */
+            }
+
+            .header-separator {
+                margin: 0 8px; /* Menší mezera na mobilu */
             }
             
             .parties-container {
@@ -418,8 +441,9 @@
         <!-- ČR crawl - horní tenčí -->
         <div class="cr-crawl-container">
             <div class="cr-header">
-                <div class="cr-header-left" id="crHeaderLeft">Výsledky voleb - Česká republika</div>
-                <div class="cr-header-right" id="crHeaderRight">sečteno: 0,00%, účast: 0,00%</div>
+                <div class="cr-header-content" id="crHeaderContent">Česká republika</div>
+                <div class="cr-header-separator">|</div>
+                <div class="cr-header-stats" id="crHeaderStats">sečteno: 0,00%, účast: 0,00%</div>
             </div>
             <div class="cr-parties-container" id="crPartiesContainer">
                 <div class="loading">Načítám celkové výsledky ČR 2025...</div>
@@ -428,8 +452,9 @@
 
         <!-- Krajský crawl - spodní -->
         <div class="header">
-            <div class="header-left" id="headerLeft">Výsledky voleb: Načítám kraje...</div>
-            <div class="header-right" id="headerRight">sečteno: 0,00%, účast: 0,00%</div>
+            <div class="header-content" id="headerContent">Načítám kraje...</div>
+            <div class="header-separator">|</div>
+            <div class="header-stats" id="headerStats">sečteno: 0,00%, účast: 0,00%</div>
         </div>
         <div class="parties-container" id="partiesContainer">
             <div class="loading">Připojuji k API krajů 2025...</div>
@@ -475,8 +500,8 @@
         }
 
         function updateHeader(region) {
-            const headerLeft = document.getElementById('headerLeft');
-            const headerRight = document.getElementById('headerRight');
+            const headerContent = document.getElementById('headerContent');
+            const headerStats = document.getElementById('headerStats');
             
             const turnout = region.turnout || {};
             const counted = turnout.precinctsFinishedPercent || 0;
@@ -484,24 +509,24 @@
             
             
             // Fáze 1: Slide out (mizí vlevo/vpravo)
-            headerLeft.classList.add('slide-out');
-            headerRight.classList.add('slide-out');
+            headerContent.classList.add('slide-out');
+            headerStats.classList.add('slide-out');
             
             setTimeout(() => {
                 // Fáze 2: Změna obsahu
-                headerLeft.innerHTML = `${region.name}`;
-                headerRight.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
+                headerContent.innerHTML = `${region.name}`;
+                headerStats.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
                 
                 // Fáze 3: Příprava slide in (začíná z opačné strany)
-                headerLeft.classList.remove('slide-out');
-                headerRight.classList.remove('slide-out');
-                headerLeft.classList.add('slide-in');
-                headerRight.classList.add('slide-in');
+                headerContent.classList.remove('slide-out');
+                headerStats.classList.remove('slide-out');
+                headerContent.classList.add('slide-in');
+                headerStats.classList.add('slide-in');
                 
                 // Fáze 4: Slide in (vjíždí do normální pozice)
                 setTimeout(() => {
-                    headerLeft.classList.remove('slide-in');
-                    headerRight.classList.remove('slide-in');
+                    headerContent.classList.remove('slide-in');
+                    headerStats.classList.remove('slide-in');
                 }, 50);
                 
                 }, 200); // Doba slide-out animace (zkráceno z 300ms)
@@ -608,14 +633,12 @@
             if (!crData) return;
             
             // Aktualizovat ČR header
-            const crHeaderLeft = document.getElementById('crHeaderLeft');
-            const crHeaderRight = document.getElementById('crHeaderRight');
+            const crHeaderStats = document.getElementById('crHeaderStats');
             const turnout = crData.turnout || {};
             const counted = turnout.precinctsFinishedPercent || 0;
             const voterTurnout = turnout.voterTurnout || 0;
             
-            crHeaderLeft.innerHTML = 'Česká republika';
-            crHeaderRight.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
+            crHeaderStats.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
             
             // Generovat ČR crawl content
             generateCrCrawlContent();
