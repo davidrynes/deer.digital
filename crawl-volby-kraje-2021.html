@@ -182,7 +182,7 @@
             justify-content: space-between;
             padding: 12px 16px 10px 16px; /* Zvětšen padding */
             margin: 0;
-            min-width: 220px; /* Zvětšeno z 180px */
+            min-width: 200px; /* Zmenšeno bez hlasů */
             position: relative;
             background: white;
             border-left: 5px solid; /* Zvětšen border */
@@ -192,6 +192,14 @@
             box-sizing: border-box;
         }
 
+        /* Horní řada: název strany (vlevo) + mandáty (vpravo) */
+        .party-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: auto; /* Zatlačí dolní řadu dolů */
+        }
+
         .party-name {
             font-size: 22px; /* Zvětšeno z 18px */
             font-weight: 700;
@@ -199,36 +207,25 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             line-height: 1.2;
+            flex: 1; /* Zabere zbytek místa */
         }
 
-        .party-stats-row {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            margin: 10px 0 6px 0; /* Zvětšen margin */
+        .party-mandates {
+            font-size: 32px; /* Velké číslo mandátů */
+            font-weight: 800;
+            color: #212529;
+            line-height: 1;
+            margin-left: 12px; /* Mezera od názvu */
         }
 
+        /* Dolní řada: procenta vpravo */
         .party-percent {
             font-size: 26px; /* Zvětšeno z 22px */
             font-weight: 800;
             color: #212529;
             line-height: 1;
-        }
-
-        .party-mandates {
-            font-size: 13px; /* Zvětšeno z 11px */
-            font-weight: 500;
-            color: #6c757d;
-            line-height: 1.1;
-        }
-
-        .party-votes {
-            font-size: 13px; /* Zvětšeno z 11px */
-            font-weight: 500;
-            color: #6c757d;
-            text-align: center;
-            margin-top: auto;
-            line-height: 1.1;
+            text-align: right; /* Procenta vpravo */
+            align-self: flex-end; /* Umístí vpravo */
         }
 
         /* Divider mezi opakováními */
@@ -522,7 +519,7 @@
                 try {
                     // Pokus o přímé načtení
                     debugLog('🎯 Zkouším přímé načtení ČR dat...');
-                    response = await fetch('https://api.elections.seznam.cz/parliament/2021/results/cr');
+                    response = await fetch('https://api.elections.seznam.cz/parliament/2025/results/cr');
                     if (!response.ok) throw new Error('Direct fetch failed');
                     data = await response.json();
                     debugLog('✅ Přímé načtení ČR dat úspěšné!');
@@ -534,7 +531,7 @@
                     for (let i = 0; i < corsProxies.length; i++) {
                         try {
                             debugLog(`🔄 ČR Proxy ${i + 1}/${corsProxies.length}: ${corsProxies[i].slice(0, 30)}...`);
-                            const proxyUrl = corsProxies[i] + 'https://api.elections.seznam.cz/parliament/2021/results/cr';
+                            const proxyUrl = corsProxies[i] + 'https://api.elections.seznam.cz/parliament/2025/results/cr';
                             response = await fetch(proxyUrl);
                             
                             if (!response.ok) {
@@ -681,7 +678,7 @@
                 try {
                     // Pokus o přímé načtení (funguje v produkci/vMix)
                     debugLog('🎯 Zkouším přímé načtení...');
-                    response = await fetch('https://api.elections.seznam.cz/parliament/2021/regions');
+                    response = await fetch('https://api.elections.seznam.cz/parliament/2025/regions');
                     if (!response.ok) throw new Error('Direct fetch failed');
                     data = await response.json();
                     debugLog('✅ Přímé načtení úspěšné!');
@@ -694,7 +691,7 @@
                     for (let i = 0; i < corsProxies.length; i++) {
                         try {
                             debugLog(`🔄 Proxy ${i + 1}/${corsProxies.length}: ${corsProxies[i].slice(0, 30)}...`);
-                            const proxyUrl = corsProxies[i] + 'https://api.elections.seznam.cz/parliament/2021/regions';
+                            const proxyUrl = corsProxies[i] + 'https://api.elections.seznam.cz/parliament/2025/regions';
                             response = await fetch(proxyUrl);
                             
                             if (!response.ok) {
@@ -870,21 +867,18 @@
                 
                 // Vytvořit obsah pouze jednou (ne opakování)
                 currentRegion.parties.forEach((party, index) => {
-                    const displayName = party.shortName8.length > 15 ? party.shortName8.substring(0, 10) : party.shortName8;
+                    const displayName = party.shortName8.length > 9 ? party.shortName8.substring(0, 9) + "." : party.shortName8;
                     
                     const percent = formatPercent(party.votesPercent);
                     const mandates = party.numOfMandates || 0;
-                    const votes = formatNumber(party.votes);
-                    const mandatesText = getMandatesText(mandates);
                     
                     content += `
                         <div class="party-block" style="border-left-color: ${party.color};">
-                            <div class="party-name">${displayName}</div>
-                            <div class="party-stats-row">
-                                <div class="party-percent">${percent}%</div>
-                                <div class="party-mandates">${mandates} ${mandatesText}</div>
+                            <div class="party-header">
+                                <div class="party-name">${displayName}</div>
+                                <div class="party-mandates">${mandates}</div>
                             </div>
-                            <div class="party-votes">${votes} hlasů</div>
+                            <div class="party-percent">${percent}%</div>
                         </div>
                     `;
                 });

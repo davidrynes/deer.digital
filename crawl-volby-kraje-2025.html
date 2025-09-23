@@ -877,7 +877,7 @@
                 
                 // Vytvořit obsah pouze jednou (ne opakování)
                 currentRegion.parties.forEach((party, index) => {
-                    const displayName = party.shortName8.length > 15 ? party.shortName8.substring(0, 10) : party.shortName8;
+                    const displayName = party.shortName8.length > 9 ? party.shortName8.substring(0, 9) + "." : party.shortName8;
                     
                     const percent = formatPercent(party.votesPercent);
                     const mandates = party.numOfMandates || 0;
