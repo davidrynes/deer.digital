@@ -84,15 +84,14 @@
             transform: translateX(100%);
         }
 
-        /* Party bloky pro ČR crawl - větší */
+        /* Party bloky pro ČR crawl - skutečně flexibilní podle obsahu */
         .cr-party-block {
             display: inline-flex;
             flex-direction: row;
             align-items: center;
-            justify-content: space-between; /* Rozložení místa mezi název a procenta */
-            padding: 6px 16px; /* Zvětšen horizontální padding */
+            padding: 6px 16px; /* Kompaktní padding */
             margin: 0;
-            min-width: 140px; /* Mírně zmenšeno, protože už není třetí element */
+            width: fit-content; /* Přesně podle obsahu */
             position: relative;
             background: white;
             border-left: 4px solid; /* Zvětšen border */
@@ -108,14 +107,17 @@
             color: #212529;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            flex: 1; /* Zabere zbytek místa */
+            white-space: nowrap; /* Název se nezlomí na více řádků */
+            margin-right: 16px; /* Větší mezera mezi názvem a procenty */
+            display: inline-block; /* Pevný blok */
         }
 
         .cr-party-percent {
             font-size: 18px; /* Zvětšeno z 14px */
             font-weight: 800; /* Zvětšena váha */
             color: #212529;
-            margin-left: 12px; /* Margin vlevo místo vpravo */
+            white-space: nowrap; /* Procenta se nezlomí */
+            flex-shrink: 0; /* Procenta si zachovají svou velikost */
         }
 
         .header {
@@ -353,9 +355,9 @@
             }
 
             .cr-party-block {
-                min-width: 110px; /* Zmenšeno kvůli odstranění mandátů */
+                width: fit-content; /* Přesně podle obsahu i na mobilu */
                 height: 35px; /* Zvětšeno */
-                padding: 4px 12px; /* Zvětšen horizontální padding */
+                padding: 4px 12px; /* Kompaktní padding pro mobil */
             }
 
             .cr-party-name {
@@ -626,7 +628,7 @@
             // Opakovat obsah 3x pro plynulý loop
             for (let repeat = 0; repeat < 3; repeat++) {
                 crData.parties.forEach((party, index) => {
-                    const displayName = party.shortName8.length > 12 ? party.shortName8.substring(0, 8) : party.shortName8;
+                    const displayName = party.shortName8; // Zobrazí celý název - bloky se přizpůsobí
                     const percent = formatPercent(party.votesPercent);
                     
                     content += `
