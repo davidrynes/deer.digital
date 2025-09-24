@@ -80,7 +80,6 @@
             position: relative;
             background: #f8f9fa;
             white-space: nowrap;
-            padding: 0 20px;
             transform: translateX(100%);
         }
 
@@ -125,19 +124,43 @@
             flex-shrink: 0;
         }
 
+        .cr-party-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
         .cr-party-name {
-            font-size: 16px;
+            font-size: 26px;
             font-weight: 700;
             color: #212529;
             text-transform: uppercase;
             letter-spacing: 0.3px;
             line-height: 1.1;
-            margin-bottom: 8px;
+            flex: 1;
+            margin-right: 8px;
             word-wrap: break-word;
         }
 
+        .cr-party-mandates {
+            font-size: 26px;
+            font-weight: 700;
+            color: #212529;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .cr-mandate-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
         .cr-party-percent {
-            font-size: 22px;
+            font-size: 42px;
             font-weight: 800;
             color: #212529;
             line-height: 1;
@@ -542,11 +565,7 @@
                 
                 debugLog(`✅ ČR data připravena: ${crData.parties.length} stran`);
                 
-                // Aktualizovat header s počtem stran
-                const debugElement = document.getElementById('crHeaderDebug');
-                if (debugElement) {
-                    debugElement.textContent = `(${crData.parties.length} stran)`;
-                }
+                // Debug element se nepoužívá
                 
                 startCrCrawl();
                 
@@ -561,10 +580,7 @@
                 
                 debugLog(`✅ Fallback data připravena: ${crData.parties.length} stran`);
                 
-                const debugElement = document.getElementById('crHeaderDebug');
-                if (debugElement) {
-                    debugElement.textContent = `(${crData.parties.length} stran - FALLBACK)`;
-                }
+                // Debug element se nepoužívá
                 
                 startCrCrawl();
             }
@@ -653,8 +669,8 @@
                 
                 // Vytvořit obsah pouze jednou (ne opakování) - jako v krajích
                 crData.parties.forEach((party, index) => {
-                    // Zobrazí celý název - bloky se přizpůsobí (jako v krajích)
-                    const displayName = party.shortName8;
+                    // Omezit název na 8 znaků včetně mezer
+                    const displayName = party.shortName8.length > 8 ? party.shortName8.substring(0, 8) + "." : party.shortName8;
                     const percent = formatPercent(party.votesPercent);
                     const mandates = party.numOfMandates || 0;
                     
@@ -668,7 +684,28 @@
                     
                     content += `
                         <div class="cr-party-block" style="border-left-color: ${party.color};">
-                            <div class="cr-party-name">${safeName}</div>
+                            <div class="cr-party-header">
+                                <div class="cr-party-name">${safeName}</div>
+                                <div class="cr-party-mandates">
+                                    ${mandates}
+                                    <svg viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" fill="#212529" class="cr-mandate-icon">
+                                        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                                        <g id="SVGRepo_iconCarrier">
+                                            <title>profile [#1341]</title>
+                                            <desc>Created with Sketch.</desc>
+                                            <defs></defs>
+                                            <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                                <g id="Dribbble-Light-Preview" transform="translate(-180.000000, -2159.000000)" fill="#212529">
+                                                    <g id="icons" transform="translate(56.000000, 160.000000)">
+                                                        <path d="M134,2008.99998 C131.783496,2008.99998 129.980955,2007.20598 129.980955,2004.99998 C129.980955,2002.79398 131.783496,2000.99998 134,2000.99998 C136.216504,2000.99998 138.019045,2002.79398 138.019045,2004.99998 C138.019045,2007.20598 136.216504,2008.99998 134,2008.99998 M137.775893,2009.67298 C139.370449,2008.39598 140.299854,2006.33098 139.958235,2004.06998 C139.561354,2001.44698 137.368965,1999.34798 134.722423,1999.04198 C131.070116,1998.61898 127.971432,2001.44898 127.971432,2004.99998 C127.971432,2006.88998 128.851603,2008.57398 130.224107,2009.67298 C126.852128,2010.93398 124.390463,2013.89498 124.004634,2017.89098 C123.948368,2018.48198 124.411563,2018.99998 125.008391,2018.99998 C125.519814,2018.99998 125.955881,2018.61598 126.001095,2018.10898 C126.404004,2013.64598 129.837274,2010.99998 134,2010.99998 C138.162726,2010.99998 141.595996,2013.64598 141.998905,2018.10898 C142.044119,2018.61598 142.480186,2018.99998 142.991609,2018.99998 C143.588437,2018.99998 144.051632,2018.48198 143.995366,2017.89098 C143.609537,2013.89498 141.147872,2010.93398 137.775893,2009.67298" id="profile-[#1341]"></path>
+                                                    </g>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </svg>
+                                </div>
+                            </div>
                             <div class="cr-party-percent">${percent}%</div>
                         </div>
                     `;
@@ -687,7 +724,28 @@
                         background: red !important;
                         border-left-color: red !important;
                     ">
-                        <div class="cr-party-name">SENTINEL</div>
+                        <div class="cr-party-header">
+                            <div class="cr-party-name">SENTINEL</div>
+                            <div class="cr-party-mandates">
+                                END
+                                <svg viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" fill="#212529" class="cr-mandate-icon">
+                                    <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                    <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                                    <g id="SVGRepo_iconCarrier">
+                                        <title>profile [#1341]</title>
+                                        <desc>Created with Sketch.</desc>
+                                        <defs></defs>
+                                        <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                            <g id="Dribbble-Light-Preview" transform="translate(-180.000000, -2159.000000)" fill="#212529">
+                                                <g id="icons" transform="translate(56.000000, 160.000000)">
+                                                    <path d="M134,2008.99998 C131.783496,2008.99998 129.980955,2007.20598 129.980955,2004.99998 C129.980955,2002.79398 131.783496,2000.99998 134,2000.99998 C136.216504,2000.99998 138.019045,2002.79398 138.019045,2004.99998 C138.019045,2007.20598 136.216504,2008.99998 134,2008.99998 M137.775893,2009.67298 C139.370449,2008.39598 140.299854,2006.33098 139.958235,2004.06998 C139.561354,2001.44698 137.368965,1999.34798 134.722423,1999.04198 C131.070116,1998.61898 127.971432,2001.44898 127.971432,2004.99998 C127.971432,2006.88998 128.851603,2008.57398 130.224107,2009.67298 C126.852128,2010.93398 124.390463,2013.89498 124.004634,2017.89098 C123.948368,2018.48198 124.411563,2018.99998 125.008391,2018.99998 C125.519814,2018.99998 125.955881,2018.61598 126.001095,2018.10898 C126.404004,2013.64598 129.837274,2010.99998 134,2010.99998 C138.162726,2010.99998 141.595996,2013.64598 141.998905,2018.10898 C142.044119,2018.61598 142.480186,2018.99998 142.991609,2018.99998 C143.588437,2018.99998 144.051632,2018.48198 143.995366,2017.89098 C143.609537,2013.89498 141.147872,2010.93398 137.775893,2009.67298" id="profile-[#1341]"></path>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
                         <div class="cr-party-percent">MARKER</div>
                     </div>
                 `;
