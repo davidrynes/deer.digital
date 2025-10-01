@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crawl Kombinovaný 2025 - Okresy + ČR</title>
+
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <!--
+        KOMBINOVANÝ CRAWL PRO VOLBY 2025
+
+        Layout:
+        - Nahoře (menší): Okresy, které se střídají
+        - Dole (větší): Celostátní ČR výsledky
+
+        API endpointy:
+        - ČR: https://api.elections.seznam.cz/parliament/2025/results/cr
+        - Okresy: https://api.elections.seznam.cz/parliament/2025/districts
+
+        CORS řešení:
+        1. Pokusí se o přímé načtení z API
+        2. Při selhání použije CORS proxy (cors-anywhere.herokuapp.com)
+        3. Při selhání obou použije fallback testovací data
+
+        Pro aktivaci CORS proxy navštivte: https://cors-anywhere.herokuapp.com/corsdemo
+    -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: transparent;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .dashboard-container {
+            width: 100%;
+            height: 280px;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+        }
+
+        /* Okresní crawl - horní menší */
+        .district-crawl-container {
+            width: 100%;
+            height: 115px;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .district-header {
+            height: 40px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+        }
+
+        .district-header-content {
+            font-size: 18px;
+            font-weight: 700;
+            color: #212529;
+            transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+        }
+
+        .district-header-separator {
+            margin: 0 12px;
+            color: #6c757d;
+            font-weight: 400;
+        }
+
+        .district-header-stats {
+            font-size: 14px;
+            font-weight: 600;
+            color: #495057;
+            transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+        }
+
+        /* Slide animace pro region header */
+        .district-header-content.slide-out {
+            transform: translateX(-30px);
+            opacity: 0;
+        }
+
+        .district-header-stats.slide-out {
+            transform: translateX(30px);
+            opacity: 0;
+        }
+
+        .district-header-content.slide-in {
+            transform: translateX(30px);
+            opacity: 0;
+        }
+
+        .district-header-stats.slide-in {
+            transform: translateX(-30px);
+            opacity: 0;
+        }
+
+        .district-parties-container {
+            display: flex;
+            height: 75px;
+            align-items: center;
+            white-space: nowrap;
+            padding: 0 20px;
+            transform: translateX(100%);
+        }
+
+        .district-party-block {
+            display: inline-flex;
+            flex-direction: row;
+            align-items: center;
+            padding: 6px 14px;
+            margin: 0;
+            width: fit-content;
+            position: relative;
+            background: white;
+            border-left: 4px solid;
+            border-right: 1px solid #e9ecef;
+            text-align: left;
+            height: 75px;
+            box-sizing: border-box;
+        }
+
+        .district-party-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #212529;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            margin-right: 16px;
+            display: inline-block;
+        }
+
+        .district-party-percent {
+            font-size: 26px;
+            font-weight: 800;
+            color: #212529;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        /* ČR crawl - spodní větší */
+        .cr-crawl-container {
+            width: 100%;
+            height: 165px;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cr-header {
+            height: 50px;
+            background: #e92929;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+        }
+
+        .cr-header-content {
+            font-size: 24px;
+            font-weight: 600;
+            color: #fafafa;
+        }
+
+        .cr-header-separator {
+            margin: 0 12px;
+            color: #fafafa;
+            font-weight: 400;
+        }
+
+        .cr-header-stats {
+            font-size: 18px;
+            font-weight: 500;
+            color: #fafafa;
+        }
+
+        .cr-parties-container {
+            display: flex;
+            height: 115px;
+            align-items: center;
+            position: relative;
+            background: #f8f9fa;
+            white-space: nowrap;
+            transform: translateX(100%);
+        }
+
+        .cr-parties-container.updating {
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .cr-party-block {
+            display: inline-flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 6px 16px;
+            margin: 0;
+            width: 220px;
+            position: relative;
+            background: white;
+            border-left: 4px solid;
+            border-right: 1px solid #e9ecef;
+            text-align: left;
+            height: 115px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+
+        .cr-party-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .cr-party-name {
+            font-size: 26px;
+            font-weight: 700;
+            color: #212529;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            line-height: 1.1;
+            flex: 1;
+            margin-right: 8px;
+            word-wrap: break-word;
+        }
+
+        .cr-party-mandates {
+            font-size: 26px;
+            font-weight: 700;
+            color: #212529;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .cr-mandate-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .cr-party-percent {
+            font-size: 42px;
+            font-weight: 800;
+            color: #212529;
+            line-height: 1;
+            text-align: right;
+            align-self: flex-end;
+        }
+
+        .cr-divider {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 50px;
+            flex-shrink: 0;
+        }
+
+        .cr-divider-dot {
+            width: 4px;
+            height: 4px;
+            background: #ced4da;
+            border-radius: 50%;
+            margin: 0 4px;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            font-size: 18px;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .updating {
+            opacity: 0.7;
+            transition: opacity 0.15s ease-in-out;
+        }
+
+        /* Sentinel bloky - skryté */
+        #district-crawl-sentinel,
+        #cr-crawl-sentinel {
+            opacity: 0 !important;
+            background: transparent !important;
+            border: none !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                height: 200px;
+            }
+
+            .district-crawl-container {
+                height: 80px;
+            }
+
+            .district-header {
+                height: 30px;
+                padding: 8px 15px;
+            }
+
+            .district-header-content {
+                font-size: 14px;
+            }
+
+            .district-header-stats {
+                font-size: 12px;
+            }
+
+            .district-parties-container {
+                height: 50px;
+            }
+
+            .district-party-block {
+                height: 50px;
+                padding: 4px 10px;
+            }
+
+            .district-party-name {
+                font-size: 14px;
+            }
+
+            .district-party-percent {
+                font-size: 18px;
+            }
+
+            .cr-crawl-container {
+                height: 120px;
+            }
+
+            .cr-header {
+                height: 35px;
+                padding: 8px 15px;
+            }
+
+            .cr-header-content {
+                font-size: 18px;
+            }
+
+            .cr-header-stats {
+                font-size: 14px;
+            }
+
+            .cr-parties-container {
+                height: 85px;
+            }
+
+            .cr-party-block {
+                width: 180px;
+                height: 85px;
+                padding: 4px 12px;
+            }
+
+            .cr-party-name {
+                font-size: 18px;
+            }
+
+            .cr-party-mandates {
+                font-size: 18px;
+            }
+
+            .cr-party-percent {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Okresní crawl - horní menší -->
+        <div class="district-crawl-container">
+            <div class="district-header">
+                <div class="district-header-content" id="districtHeaderContent">Načítám okresy...</div>
+                <div class="district-header-separator">|</div>
+                <div class="district-header-stats" id="districtHeaderStats">sečteno: 0,00%, účast: 0,00%</div>
+            </div>
+            <div class="district-parties-container" id="districtPartiesContainer">
+                <div class="loading">Připojuji k API okresů 2025...</div>
+            </div>
+        </div>
+
+        <!-- ČR crawl - spodní větší -->
+        <div class="cr-crawl-container">
+            <div class="cr-header">
+                <div class="cr-header-content" id="crHeaderContent">Česká republika</div>
+                <div class="cr-header-separator">|</div>
+                <div class="cr-header-stats" id="crHeaderStats">sečteno: 0,00%, účast: 0,00%</div>
+            </div>
+            <div class="cr-parties-container" id="crPartiesContainer">
+                <div class="loading">Načítám celkové výsledky ČR 2025...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let districtsData = [];
+        let currentDistrictIndex = 0;
+        let currentDistrict = null;
+        let crData = null;
+        let isUpdating = false;
+
+        // Debug mode
+        const urlParams = new URLSearchParams(window.location.search);
+        const isDebugMode = urlParams.get('debug') === 'true' ||
+                          window.location.hostname === 'localhost' ||
+                          window.location.hostname === '127.0.0.1';
+
+        const debugLog = function(...args) {
+            if (isDebugMode) {
+                console.log(...args);
+            }
+        };
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return "0";
+            return new Intl.NumberFormat('cs-CZ').format(num);
+        }
+
+        function formatPercent(num) {
+            if (num === null || num === undefined || isNaN(num)) return "0.0";
+            return parseFloat(num).toFixed(1);
+        }
+
+        // === ČR CRAWL LOGIKA ===
+        async function loadCrData() {
+            debugLog('🔄 Začínám načítání dat za celou ČR...');
+
+            try {
+                let response;
+                let dataSource = 'unknown';
+
+                // Pokus 1: Přímé načtení z API
+                try {
+                    const apiUrl = 'https://api.elections.seznam.cz/parliament/2025/results/cr';
+                    response = await fetch(apiUrl);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    dataSource = 'direct-api';
+                    debugLog('✅ Přímé načtení z API úspěšné');
+                } catch (error) {
+                    debugLog('❌ Přímé načtení selhalo:', error.message);
+
+                    // Pokus 2: CORS proxy
+                    const corsProxies = [
+                        'https://cors-anywhere.herokuapp.com/',
+                        'https://api.allorigins.win/raw?url=',
+                        'https://thingproxy.freeboard.io/fetch/'
+                    ];
+
+                    let proxySuccess = false;
+                    for (const proxy of corsProxies) {
+                        try {
+                            const proxyUrl = proxy + encodeURIComponent('https://api.elections.seznam.cz/parliament/2025/results/cr');
+                            response = await fetch(proxyUrl);
+                            if (response.ok) {
+                                dataSource = `proxy-${proxy}`;
+                                debugLog(`✅ CORS proxy úspěšné: ${proxy}`);
+                                proxySuccess = true;
+                                break;
+                            }
+                        } catch (proxyError) {
+                            debugLog(`❌ CORS proxy selhalo: ${proxy}`, proxyError.message);
+                            continue;
+                        }
+                    }
+
+                    if (!proxySuccess) {
+                        throw new Error('Všechny pokusy o načtení dat selhaly');
+                    }
+                }
+
+                const data = await response.json();
+                debugLog('📊 Raw data struktura:', Object.keys(data));
+
+                // Různé možné struktury API
+                let allParties = [];
+
+                if (data._items && Array.isArray(data._items)) {
+                    allParties = data._items;
+                } else if (data.parties && Array.isArray(data.parties)) {
+                    allParties = data.parties;
+                } else if (data.results && Array.isArray(data.results)) {
+                    allParties = data.results;
+                } else if (Array.isArray(data)) {
+                    allParties = data;
+                }
+
+                debugLog(`📊 Celkem nalezeno ${allParties.length} položek`);
+
+                // Zpracování dat
+                const processedParties = [];
+
+                allParties.forEach((party, index) => {
+                    let name = party.shortName8 || party.shortName || party.name || `Strana ${index + 1}`;
+
+                    if (!name || name.trim().length === 0) {
+                        return;
+                    }
+
+                    // Omezit délku názvu
+                    if (name.length > 20) {
+                        name = name.substring(0, 17) + '...';
+                    }
+
+                    let color = party.vParty?.color ||
+                               party.color ||
+                               party.partyColor ||
+                               party.colour ||
+                               '#6c757d';
+
+                    if (color && !color.startsWith('#')) {
+                        color = '#' + color;
+                    }
+
+                    // Přeskočit šedé barvy
+                    if (color === '#bebebe' || color === '#6c757d') {
+                        const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                        const hue = (hash * 137) % 360;
+                        color = `hsl(${hue}, 65%, 50%)`;
+                    }
+
+                    const processedParty = {
+                        shortName8: name,
+                        color: color,
+                        votes: party.votes || party.totalVotes || 0,
+                        votesPercent: party.votesPercent || party.percent || party.percentage || 0,
+                        numOfMandates: party.numOfMandates || party.mandates || party.seats || 0
+                    };
+
+                    processedParties.push(processedParty);
+                });
+
+                // Seřadit podle procent
+                processedParties.sort((a, b) => (b.votesPercent || 0) - (a.votesPercent || 0));
+
+                crData = {
+                    turnout: data.turnout || {},
+                    parties: processedParties
+                };
+
+                debugLog(`✅ ČR data připravena: ${crData.parties.length} stran`);
+
+                startCrCrawl();
+
+            } catch (error) {
+                debugLog('❌ Kritická chyba při načítání dat:', error);
+
+                // Fallback data
+                crData = {
+                    turnout: { voterTurnout: 0.0, precinctsFinishedPercent: 0.0 },
+                    parties: [
+                        { shortName8: "ANO", color: "#261060", votes: 0, votesPercent: 0, numOfMandates: 0 },
+                        { shortName8: "SPOLU", color: "#00EA29", votes: 0, votesPercent: 0, numOfMandates: 0 },
+                        { shortName8: "Piráti", color: "#6E6E6E", votes: 0, votesPercent: 0, numOfMandates: 0 },
+                        { shortName8: "SPD", color: "#C05F2F", votes: 0, votesPercent: 0, numOfMandates: 0 },
+                        { shortName8: "PŘÍSAHA", color: "#0240C6", votes: 0, votesPercent: 0, numOfMandates: 0 },
+                        { shortName8: "Stačilo!", color: "#F90A0E", votes: 0, votesPercent: 0, numOfMandates: 0 }
+                    ]
+                };
+
+                startCrCrawl();
+            }
+        }
+
+        function startCrCrawl() {
+            if (!crData) {
+                debugLog('⚠️ Žádná data k zobrazení');
+                return;
+            }
+
+            // Aktualizovat ČR header
+            const crHeaderStats = document.getElementById('crHeaderStats');
+            const turnout = crData.turnout || {};
+            const counted = turnout.precinctsFinishedPercent || 0;
+            const voterTurnout = turnout.voterTurnout || 0;
+
+            crHeaderStats.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
+
+            // Generovat ČR crawl content
+            generateCrCrawlContent();
+        }
+
+        function generateCrCrawlContent() {
+            const container = document.getElementById('crPartiesContainer');
+
+            if (!crData || !crData.parties || crData.parties.length === 0) {
+                container.innerHTML = '<div class="loading">Žádná data pro ČR</div>';
+                return;
+            }
+
+            container.classList.add('updating');
+
+            setTimeout(() => {
+                let content = '';
+
+                crData.parties.forEach((party, index) => {
+                    const displayName = party.shortName8.length > 8 ? party.shortName8.substring(0, 8) + "." : party.shortName8;
+                    const percent = formatPercent(party.votesPercent);
+                    const mandates = party.numOfMandates || 0;
+
+                    const safeName = displayName
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
+
+                    content += `
+                        <div class="cr-party-block" style="border-left-color: ${party.color};">
+                            <div class="cr-party-header">
+                                <div class="cr-party-name">${safeName}</div>
+                                <div class="cr-party-mandates">
+                                    ${mandates}
+                                    <svg viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" fill="#212529" class="cr-mandate-icon">
+                                        <g id="SVGRepo_iconCarrier">
+                                            <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                                <g id="Dribbble-Light-Preview" transform="translate(-180.000000, -2159.000000)" fill="#212529">
+                                                    <g id="icons" transform="translate(56.000000, 160.000000)">
+                                                        <path d="M134,2008.99998 C131.783496,2008.99998 129.980955,2007.20598 129.980955,2004.99998 C129.980955,2002.79398 131.783496,2000.99998 134,2000.99998 C136.216504,2000.99998 138.019045,2002.79398 138.019045,2004.99998 C138.019045,2007.20598 136.216504,2008.99998 134,2008.99998 M137.775893,2009.67298 C139.370449,2008.39598 140.299854,2006.33098 139.958235,2004.06998 C139.561354,2001.44698 137.368965,1999.34798 134.722423,1999.04198 C131.070116,1998.61898 127.971432,2001.44898 127.971432,2004.99998 C127.971432,2006.88998 128.851603,2008.57398 130.224107,2009.67298 C126.852128,2010.93398 124.390463,2013.89498 124.004634,2017.89098 C123.948368,2018.48198 124.411563,2018.99998 125.008391,2018.99998 C125.519814,2018.99998 125.955881,2018.61598 126.001095,2018.10898 C126.404004,2013.64598 129.837274,2010.99998 134,2010.99998 C138.162726,2010.99998 141.595996,2013.64598 141.998905,2018.10898 C142.044119,2018.61598 142.480186,2018.99998 142.991609,2018.99998 C143.588437,2018.99998 144.051632,2018.48198 143.995366,2017.89098 C143.609537,2013.89498 141.147872,2010.93398 137.775893,2009.67298" id="profile-[#1341]"></path>
+                                                    </g>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="cr-party-percent">${percent}%</div>
+                        </div>
+                    `;
+                });
+
+                // Přidat neviditelný sentinel blok
+                content += `
+                    <div id="cr-crawl-sentinel" class="cr-party-block" style="
+                        width: 160px !important;
+                        min-width: 160px !important;
+                        background: transparent !important;
+                        border: none !important;
+                        opacity: 0 !important;
+                        pointer-events: none !important;
+                    ">
+                        <div class="cr-party-header">
+                            <div class="cr-party-name" style="opacity: 0;"></div>
+                            <div class="cr-party-mandates" style="opacity: 0;"></div>
+                        </div>
+                        <div class="cr-party-percent" style="opacity: 0;"></div>
+                    </div>
+                `;
+
+                container.innerHTML = content;
+                container.classList.remove('updating');
+
+                // Spustit animaci
+                startCrCrawlAnimation();
+
+            }, 150);
+        }
+
+        function startCrCrawlAnimation() {
+            const container = document.getElementById('crPartiesContainer');
+
+            const viewportWidth = window.innerWidth;
+            const contentWidth = container.scrollWidth;
+
+            const finalTranslatePercent = -100 - (contentWidth / viewportWidth * 100);
+            const totalDistance = viewportWidth + contentWidth;
+            const animationDuration = Math.max(totalDistance / 80, 15);
+
+            debugLog(`🎬 ČR Animace: ${animationDuration}s, konec: ${finalTranslatePercent}%`);
+
+            const keyframeName = 'cr-scroll-left-' + Date.now();
+            const keyframeCSS = `
+                @keyframes ${keyframeName} {
+                    0% { transform: translateX(100%); }
+                    100% { transform: translateX(${finalTranslatePercent}%); }
+                }
+            `;
+
+            const style = document.createElement('style');
+            style.textContent = keyframeCSS;
+            document.head.appendChild(style);
+
+            container.style.animation = `${keyframeName} ${animationDuration}s linear`;
+
+            // Po dokončení animace refreshovat data
+            setTimeout(() => {
+                debugLog('🔄 ČR Animace dokončena - refresh dat');
+                loadCrData();
+            }, animationDuration * 1000);
+        }
+
+        // === OKRESNÍ CRAWL LOGIKA ===
+        async function loadDistrictsData() {
+            debugLog('🔄 Načítám data okresů...');
+
+            try {
+                let response;
+                let data;
+
+                const corsProxies = [
+                    'https://cors-anywhere.herokuapp.com/',
+                    'https://api.allorigins.win/raw?url=',
+                    'https://thingproxy.freeboard.io/fetch/'
+                ];
+
+                try {
+                    debugLog('🎯 Zkouším přímé načtení okresů...');
+                    response = await fetch('https://api.elections.seznam.cz/parliament/2025/districts');
+                    if (!response.ok) throw new Error('Direct fetch failed');
+                    data = await response.json();
+                    debugLog('✅ Přímé načtení okresů úspěšné!');
+                } catch (directError) {
+                    debugLog('⚠️ Přímé načtení okresů selhalo, zkouším CORS proxy...');
+
+                    let lastError = directError;
+
+                    for (let i = 0; i < corsProxies.length; i++) {
+                        try {
+                            debugLog(`🔄 Okres Proxy ${i + 1}/${corsProxies.length}: ${corsProxies[i].slice(0, 30)}...`);
+                            const proxyUrl = corsProxies[i] + 'https://api.elections.seznam.cz/parliament/2025/districts';
+                            response = await fetch(proxyUrl);
+
+                            if (!response.ok) {
+                                throw new Error(`Okres Proxy ${i + 1} failed with status ${response.status}`);
+                            }
+
+                            data = await response.json();
+                            debugLog(`✅ Okres Proxy ${i + 1} úspěšné!`);
+                            break;
+
+                        } catch (proxyError) {
+                            debugLog(`❌ Okres Proxy ${i + 1} selhalo: ${proxyError.message}`);
+                            lastError = proxyError;
+
+                            if (i === corsProxies.length - 1) {
+                                throw new Error(`All okres proxy attempts failed. Last error: ${lastError.message}`);
+                            }
+                        }
+                    }
+                }
+
+                districtsData = data._items.map(district => ({
+                    id: district.id,
+                    name: district.name,
+                    turnout: district.turnout || null,
+                    parties: district.parties
+                        .filter(party => party.shortName8 && party.shortName8.length > 1)
+                        .map(party => ({
+                            shortName8: party.shortName8,
+                            color: party.vParty.color || '#6c757d',
+                            votes: party.results?.votes || 0,
+                            votesPercent: party.results?.votesPercent || 0,
+                            numOfMandates: party.numOfMandates || 0
+                        }))
+                        .sort((a, b) => (b.votesPercent || 0) - (a.votesPercent || 0))
+                }));
+
+                debugLog(`✅ Okresy data zpracována: ${districtsData.length} okresů`);
+
+                currentDistrictIndex = 0;
+                startDistrictCycling();
+
+            } catch (error) {
+                debugLog(`❌ Načítání okresů selhalo: ${error.message}`);
+
+                // Fallback data
+                districtsData = [
+                    {
+                        id: 1,
+                        name: "Praha-západ",
+                        turnout: { voterTurnout: 0.0, precinctsFinishedPercent: 0.0 },
+                        parties: [
+                            { shortName8: "ANO", color: "#261060", votes: 0, votesPercent: 0, numOfMandates: 0 },
+                            { shortName8: "SPOLU", color: "#00EA29", votes: 0, votesPercent: 0, numOfMandates: 0 },
+                            { shortName8: "Piráti", color: "#6E6E6E", votes: 0, votesPercent: 0, numOfMandates: 0 }
+                        ]
+                    }
+                ];
+
+                debugLog(`✅ Okresy Fallback data připravena`);
+                startDistrictCycling();
+            }
+        }
+
+        function startDistrictCycling() {
+            if (districtsData.length === 0) return;
+            displayCurrentDistrict(false);
+        }
+
+        let districtAnimationMonitorId = null;
+
+        function setupDistrictSentinelMonitoring() {
+            if (districtAnimationMonitorId) {
+                cancelAnimationFrame(districtAnimationMonitorId);
+                districtAnimationMonitorId = null;
+            }
+
+            const sentinelElement = document.getElementById('district-crawl-sentinel');
+            if (!sentinelElement) {
+                return;
+            }
+
+            let lastCheck = Date.now();
+            let hasPassedViewport = false;
+
+            function monitorSentinel() {
+                const now = Date.now();
+
+                if (now - lastCheck > 100) {
+                    const rect = sentinelElement.getBoundingClientRect();
+                    const isCompletelyLeft = rect.right < 0;
+                    lastCheck = now;
+
+                    if (isCompletelyLeft && !hasPassedViewport) {
+                        hasPassedViewport = true;
+
+                        cancelAnimationFrame(districtAnimationMonitorId);
+                        districtAnimationMonitorId = null;
+
+                        currentDistrictIndex = (currentDistrictIndex + 1) % districtsData.length;
+                        const nextDistrict = districtsData[currentDistrictIndex];
+
+                        updateDistrictHeader(nextDistrict);
+
+                        setTimeout(() => {
+                            displayCurrentDistrict(true);
+                        }, 300);
+
+                        return;
+                    }
+                }
+
+                districtAnimationMonitorId = requestAnimationFrame(monitorSentinel);
+            }
+
+            districtAnimationMonitorId = requestAnimationFrame(monitorSentinel);
+        }
+
+        function updateDistrictHeader(district) {
+            const headerContent = document.getElementById('districtHeaderContent');
+            const headerStats = document.getElementById('districtHeaderStats');
+
+            const turnout = district.turnout || {};
+            const counted = turnout.precinctsFinishedPercent || 0;
+            const voterTurnout = turnout.voterTurnout || 0;
+
+            headerContent.classList.add('slide-out');
+            headerStats.classList.add('slide-out');
+
+            setTimeout(() => {
+                headerContent.innerHTML = `${district.name}`;
+                headerStats.innerHTML = `sečteno: ${formatPercent(counted)}%, účast: ${formatPercent(voterTurnout)}%`;
+
+                headerContent.classList.remove('slide-out');
+                headerStats.classList.remove('slide-out');
+                headerContent.classList.add('slide-in');
+                headerStats.classList.add('slide-in');
+
+                setTimeout(() => {
+                    headerContent.classList.remove('slide-in');
+                    headerStats.classList.remove('slide-in');
+                }, 50);
+
+            }, 200);
+        }
+
+        function displayCurrentDistrict(isHeaderAlreadyAnimated = false) {
+            currentDistrict = districtsData[currentDistrictIndex];
+
+            if (!isHeaderAlreadyAnimated) {
+                updateDistrictHeader(currentDistrict);
+            }
+
+            generateDistrictCrawlContent();
+        }
+
+        function generateDistrictCrawlContent() {
+            const container = document.getElementById('districtPartiesContainer');
+
+            if (!currentDistrict || !currentDistrict.parties) {
+                container.innerHTML = '<div class="loading">Žádná data pro aktuální okres</div>';
+                return;
+            }
+
+            container.classList.add('updating');
+
+            setTimeout(() => {
+                let content = '';
+
+                currentDistrict.parties.forEach((party, index) => {
+                    const displayName = party.shortName8.length > 9 ? party.shortName8.substring(0, 9) + "." : party.shortName8;
+                    const percent = formatPercent(party.votesPercent);
+
+                    content += `
+                        <div class="district-party-block" style="border-left-color: ${party.color};">
+                            <div class="district-party-name">${displayName}</div>
+                            <div class="district-party-percent">${percent}%</div>
+                        </div>
+                    `;
+                });
+
+                // Přidat neviditelný sentinel blok
+                content += `
+                    <div id="district-crawl-sentinel" class="district-party-block" style="
+                        width: 160px !important;
+                        min-width: 160px !important;
+                        background: transparent !important;
+                        border: none !important;
+                        opacity: 0 !important;
+                        pointer-events: none !important;
+                    ">
+                        <div class="district-party-name" style="opacity: 0;"></div>
+                        <div class="district-party-percent" style="opacity: 0;"></div>
+                    </div>
+                `;
+
+                container.innerHTML = content;
+                container.classList.remove('updating');
+
+                setupDistrictSentinelMonitoring();
+                startDistrictCrawlAnimation();
+
+            }, 150);
+        }
+
+        function startDistrictCrawlAnimation() {
+            const container = document.getElementById('districtPartiesContainer');
+
+            const viewportWidth = window.innerWidth;
+            const contentWidth = container.scrollWidth;
+
+            const finalTranslatePercent = -100 - (contentWidth / viewportWidth * 100);
+            const totalDistance = viewportWidth + contentWidth;
+            const animationDuration = Math.max(totalDistance / 80, 15);
+
+            debugLog(`🎬 Okres Animace: ${animationDuration}s, konec: ${finalTranslatePercent}%`);
+
+            const keyframeName = 'district-scroll-left-' + Date.now();
+            const keyframeCSS = `
+                @keyframes ${keyframeName} {
+                    0% { transform: translateX(100%); }
+                    100% { transform: translateX(${finalTranslatePercent}%); }
+                }
+            `;
+
+            const styleElement = document.createElement('style');
+            styleElement.textContent = keyframeCSS;
+            document.head.appendChild(styleElement);
+
+            container.style.transform = 'translateX(100%)';
+            container.style.animation = 'none';
+
+            setTimeout(() => {
+                container.style.animation = `${keyframeName} ${animationDuration}s linear`;
+
+                const handleAnimationEnd = (event) => {
+                    if (event.target !== container) return;
+
+                    container.removeEventListener('animationend', handleAnimationEnd);
+
+                    if (districtAnimationMonitorId) {
+                        cancelAnimationFrame(districtAnimationMonitorId);
+                        districtAnimationMonitorId = null;
+
+                        currentDistrictIndex = (currentDistrictIndex + 1) % districtsData.length;
+                        const nextDistrict = districtsData[currentDistrictIndex];
+
+                        updateDistrictHeader(nextDistrict);
+                        setTimeout(() => {
+                            displayCurrentDistrict(true);
+                        }, 300);
+                    }
+                };
+
+                container.addEventListener('animationend', handleAnimationEnd);
+
+                setTimeout(() => {
+                    try {
+                        if (styleElement.parentNode) {
+                            document.head.removeChild(styleElement);
+                        }
+                    } catch (error) {
+                        // Cleanup skipped
+                    }
+                }, animationDuration * 1000 + 1000);
+            }, 50);
+        }
+
+        // Inicializace při načtení stránky
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog('🚀 Aplikace spuštěna - kombinovaný crawl okresy');
+            loadCrData();         // ČR crawl (dole)
+            loadDistrictsData();  // Okresní crawl (nahoře)
+        });
+
+        // Aktualizace každých 5 minut
+        setInterval(() => {
+            debugLog('🔄 Periodická aktualizace dat');
+            loadCrData();
+            loadDistrictsData();
+        }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
