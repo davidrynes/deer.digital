@@ -621,20 +621,22 @@
 
         function generateCrCrawlContent() {
             const crPartiesContainer = document.getElementById('crPartiesContainer');
-            
+
             if (!crData || !crData.parties) {
                 crPartiesContainer.innerHTML = '<div class="loading">Žádná data pro ČR</div>';
                 return;
             }
-            
-            let content = '';
-            
-            // Opakovat obsah 3x pro plynulý loop
-            for (let repeat = 0; repeat < 3; repeat++) {
+
+            crPartiesContainer.classList.add('updating');
+
+            setTimeout(() => {
+                let content = '';
+
+                // Vytvořit obsah pouze jednou (ne opakování)
                 crData.parties.forEach((party, index) => {
-                    const displayName = party.shortName8; // Zobrazí celý název - bloky se přizpůsobí
+                    const displayName = party.shortName8;
                     const percent = formatPercent(party.votesPercent);
-                    
+
                     content += `
                         <div class="cr-party-block" style="border-left-color: ${party.color};">
                             <div class="cr-party-name">${displayName}</div>
@@ -642,25 +644,133 @@
                         </div>
                     `;
                 });
-                
-                // Divider mezi opakováními (kromě posledního)
-                if (repeat < 2) {
-                    content += `
-                        <div class="cr-divider">
-                            <div class="cr-divider-dot"></div>
-                            <div class="cr-divider-dot"></div>
-                            <div class="cr-divider-dot"></div>
-                        </div>
-                    `;
-                }
+
+                // Přidat neviditelný sentinel blok
+                content += `
+                    <div id="cr-crawl-sentinel" class="cr-party-block" style="
+                        width: 160px !important;
+                        min-width: 160px !important;
+                        background: transparent !important;
+                        border: none !important;
+                        opacity: 0 !important;
+                        pointer-events: none !important;
+                    ">
+                        <div class="cr-party-name" style="opacity: 0;"></div>
+                        <div class="cr-party-percent" style="opacity: 0;"></div>
+                    </div>
+                `;
+
+                crPartiesContainer.innerHTML = content;
+                crPartiesContainer.classList.remove('updating');
+
+                // Nastavit monitoring pro sentinel blok
+                setupCrSentinelMonitoring();
+
+                // Spustit animaci
+                startCrCrawlAnimation();
+            }, 150);
+        }
+
+        // Globální proměnná pro monitoring ČR animace
+        let crAnimationMonitorId = null;
+
+        function setupCrSentinelMonitoring() {
+            if (crAnimationMonitorId) {
+                cancelAnimationFrame(crAnimationMonitorId);
+                crAnimationMonitorId = null;
             }
-            
-            crPartiesContainer.innerHTML = content;
-            
-            // Spustit animaci
+
+            const sentinelElement = document.getElementById('cr-crawl-sentinel');
+            if (!sentinelElement) {
+                return;
+            }
+
+            let lastCheck = Date.now();
+            let hasPassedViewport = false;
+
+            function monitorSentinel() {
+                const now = Date.now();
+
+                if (now - lastCheck > 100) {
+                    const rect = sentinelElement.getBoundingClientRect();
+                    const isCompletelyLeft = rect.right < 0;
+                    lastCheck = now;
+
+                    if (isCompletelyLeft && !hasPassedViewport) {
+                        hasPassedViewport = true;
+
+                        cancelAnimationFrame(crAnimationMonitorId);
+                        crAnimationMonitorId = null;
+
+                        setTimeout(() => {
+                            loadCrData();
+                        }, 100);
+
+                        return;
+                    }
+                }
+
+                crAnimationMonitorId = requestAnimationFrame(monitorSentinel);
+            }
+
+            crAnimationMonitorId = requestAnimationFrame(monitorSentinel);
+        }
+
+        function startCrCrawlAnimation() {
+            const crPartiesContainer = document.getElementById('crPartiesContainer');
+
+            const viewportWidth = window.innerWidth;
+            const contentWidth = crPartiesContainer.scrollWidth;
+
+            const finalTranslatePercent = -100 - (contentWidth / viewportWidth * 100);
+            const totalDistance = viewportWidth + contentWidth;
+            const animationDuration = Math.max(totalDistance / 80, 15);
+
+            const keyframeName = 'cr-scroll-left-' + Date.now();
+            const keyframeCSS = `
+                @keyframes ${keyframeName} {
+                    0% { transform: translateX(100%); }
+                    100% { transform: translateX(${finalTranslatePercent}%); }
+                }
+            `;
+
+            const style = document.createElement('style');
+            style.textContent = keyframeCSS;
+            document.head.appendChild(style);
+
+            crPartiesContainer.style.transform = 'translateX(100%)';
+            crPartiesContainer.style.animation = 'none';
+
             setTimeout(() => {
-                crPartiesContainer.classList.add('animate');
-            }, 2000); // Zpomaleno z 1s na 2s pro postupné načtení
+                crPartiesContainer.style.animation = `${keyframeName} ${animationDuration}s linear`;
+
+                const handleAnimationEnd = (event) => {
+                    if (event.target !== crPartiesContainer) return;
+
+                    crPartiesContainer.removeEventListener('animationend', handleAnimationEnd);
+
+                    if (crAnimationMonitorId) {
+                        cancelAnimationFrame(crAnimationMonitorId);
+                        crAnimationMonitorId = null;
+
+                        setTimeout(() => {
+                            loadCrData();
+                        }, 100);
+                    }
+                };
+
+                crPartiesContainer.addEventListener('animationend', handleAnimationEnd);
+
+                setTimeout(() => {
+                    try {
+                        if (style.parentNode) {
+                            document.head.removeChild(style);
+                        }
+                    } catch (error) {
+                        // Cleanup skipped
+                    }
+                }, animationDuration * 1000 + 1000);
+            }, 50);
         }
 
         async function loadRegionsData() {

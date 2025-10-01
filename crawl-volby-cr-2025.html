@@ -760,31 +760,91 @@
                     });
                 }
                 
-                // Spustit animaci po načtení obsahu (jako v krajích)
+                // Nastavit monitoring pro sentinel blok
+                setupCrSentinelMonitoring();
+
+                // Spustit animaci po načtení obsahu
                 startCrCrawlAnimation();
-                
+
             }, 150);
+        }
+
+        // Globální proměnná pro monitoring ČR animace
+        let crAnimationMonitorId = null;
+
+        function setupCrSentinelMonitoring() {
+            // Zrušit starý monitoring pokud existuje
+            if (crAnimationMonitorId) {
+                cancelAnimationFrame(crAnimationMonitorId);
+                crAnimationMonitorId = null;
+            }
+
+            const sentinelElement = document.getElementById('cr-crawl-sentinel');
+            if (!sentinelElement) {
+                debugLog('⚠️ CR Sentinel element nenalezen');
+                return;
+            }
+
+            let lastCheck = Date.now();
+            let hasPassedViewport = false;
+
+            // Monitoring funkcí pomocí requestAnimationFrame
+            function monitorSentinel() {
+                const now = Date.now();
+
+                // Kontrolovat každých 100ms pro performance
+                if (now - lastCheck > 100) {
+                    const rect = sentinelElement.getBoundingClientRect();
+                    const isCompletelyLeft = rect.right < 0;
+                    lastCheck = now;
+
+                    // Když sentinel úplně zmizel vlevo
+                    if (isCompletelyLeft && !hasPassedViewport) {
+                        hasPassedViewport = true;
+
+                        debugLog('🎯 CR Sentinel zmizel - restart crawlu');
+
+                        // Zastavit monitoring
+                        cancelAnimationFrame(crAnimationMonitorId);
+                        crAnimationMonitorId = null;
+
+                        // Okamžitě restartovat crawl
+                        setTimeout(() => {
+                            loadCrData();
+                        }, 100);
+
+                        return; // Ukončit monitoring
+                    }
+                }
+
+                // Pokračovat v monitoringu
+                crAnimationMonitorId = requestAnimationFrame(monitorSentinel);
+            }
+
+            // Spustit monitoring
+            crAnimationMonitorId = requestAnimationFrame(monitorSentinel);
+            debugLog('🔍 CR Sentinel monitoring spuštěn');
         }
 
         function startCrCrawlAnimation() {
             const container = document.getElementById('crPartiesContainer');
-            
+
             // Vypočítat šířky
             const viewportWidth = window.innerWidth;
             const contentWidth = container.scrollWidth;
-            
+
             debugLog(`🎬 Start animace - viewport: ${viewportWidth}px, content: ${contentWidth}px`);
             debugLog(`🎬 Počet bloků v kontejneru: ${container.querySelectorAll('.cr-party-block').length}`);
-            
+
             // Vypočítat správný konečný translateX tak, aby poslední prvek úplně zmizel vlevo
             const finalTranslatePercent = -100 - (contentWidth / viewportWidth * 100);
-            
+
             // Vypočítat dobu animace (rychlost: 80px za sekundu)
             const totalDistance = viewportWidth + contentWidth;
             const animationDuration = Math.max(totalDistance / 80, 15);
-            
+
             debugLog(`🎬 Animace: ${animationDuration}s, konec: ${finalTranslatePercent}%`);
-            
+
             // Vytvořit dynamické CSS keyframe
             const keyframeName = 'cr-scroll-left-' + Date.now();
             const keyframeCSS = `
@@ -793,22 +853,55 @@
                     100% { transform: translateX(${finalTranslatePercent}%); }
                 }
             `;
-            
+
             // Přidat CSS do head
             const style = document.createElement('style');
             style.textContent = keyframeCSS;
             document.head.appendChild(style);
-            
+
+            // Resetovat pozici a animaci
+            container.style.transform = 'translateX(100%)';
+            container.style.animation = 'none';
+
             // Spustit animaci
-            container.style.animation = `${keyframeName} ${animationDuration}s linear`;
-            
-            debugLog(`🎬 Animace spuštěna: ${keyframeName} ${animationDuration}s linear`);
-            
-            // Po dokončení animace refreshovat data
             setTimeout(() => {
-                debugLog('🔄 Animace dokončena - refresh dat');
-                loadCrData();
-            }, animationDuration * 1000);
+                container.style.animation = `${keyframeName} ${animationDuration}s linear`;
+                debugLog(`🎬 Animace spuštěna: ${keyframeName} ${animationDuration}s linear`);
+
+                // FALLBACK: Přidat animationend listener jako záložní řešení
+                const handleAnimationEnd = (event) => {
+                    if (event.target !== container) return;
+
+                    // Odebrat listener
+                    container.removeEventListener('animationend', handleAnimationEnd);
+
+                    // Pouze pokud monitoring selhal (stále běží)
+                    if (crAnimationMonitorId) {
+                        debugLog('⚠️ Animace skončila, ale sentinel monitoring stále běží - fallback restart');
+                        // Zrušit neúspěšný monitoring
+                        cancelAnimationFrame(crAnimationMonitorId);
+                        crAnimationMonitorId = null;
+
+                        // Pokračovat restartem
+                        setTimeout(() => {
+                            loadCrData();
+                        }, 100);
+                    }
+                };
+
+                container.addEventListener('animationend', handleAnimationEnd);
+
+                // Vyčistit keyframe po animaci
+                setTimeout(() => {
+                    try {
+                        if (style.parentNode) {
+                            document.head.removeChild(style);
+                        }
+                    } catch (error) {
+                        // Keyframe cleanup skipped
+                    }
+                }, animationDuration * 1000 + 1000);
+            }, 50);
         }
 
         // Inicializace při načtení stránky

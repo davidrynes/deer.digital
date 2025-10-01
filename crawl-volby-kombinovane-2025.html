@@ -679,10 +679,58 @@
                 container.innerHTML = content;
                 container.classList.remove('updating');
 
+                // Nastavit monitoring pro sentinel blok
+                setupCrSentinelMonitoring();
+
                 // Spustit animaci
                 startCrCrawlAnimation();
 
             }, 150);
+        }
+
+        // Globální proměnná pro monitoring ČR animace
+        let crAnimationMonitorId = null;
+
+        function setupCrSentinelMonitoring() {
+            if (crAnimationMonitorId) {
+                cancelAnimationFrame(crAnimationMonitorId);
+                crAnimationMonitorId = null;
+            }
+
+            const sentinelElement = document.getElementById('cr-crawl-sentinel');
+            if (!sentinelElement) {
+                return;
+            }
+
+            let lastCheck = Date.now();
+            let hasPassedViewport = false;
+
+            function monitorSentinel() {
+                const now = Date.now();
+
+                if (now - lastCheck > 100) {
+                    const rect = sentinelElement.getBoundingClientRect();
+                    const isCompletelyLeft = rect.right < 0;
+                    lastCheck = now;
+
+                    if (isCompletelyLeft && !hasPassedViewport) {
+                        hasPassedViewport = true;
+
+                        cancelAnimationFrame(crAnimationMonitorId);
+                        crAnimationMonitorId = null;
+
+                        setTimeout(() => {
+                            loadCrData();
+                        }, 100);
+
+                        return;
+                    }
+                }
+
+                crAnimationMonitorId = requestAnimationFrame(monitorSentinel);
+            }
+
+            crAnimationMonitorId = requestAnimationFrame(monitorSentinel);
         }
 
         function startCrCrawlAnimation() {
@@ -709,13 +757,39 @@
             style.textContent = keyframeCSS;
             document.head.appendChild(style);
 
-            container.style.animation = `${keyframeName} ${animationDuration}s linear`;
+            container.style.transform = 'translateX(100%)';
+            container.style.animation = 'none';
 
-            // Po dokončení animace refreshovat data
             setTimeout(() => {
-                debugLog('🔄 ČR Animace dokončena - refresh dat');
-                loadCrData();
-            }, animationDuration * 1000);
+                container.style.animation = `${keyframeName} ${animationDuration}s linear`;
+
+                const handleAnimationEnd = (event) => {
+                    if (event.target !== container) return;
+
+                    container.removeEventListener('animationend', handleAnimationEnd);
+
+                    if (crAnimationMonitorId) {
+                        cancelAnimationFrame(crAnimationMonitorId);
+                        crAnimationMonitorId = null;
+
+                        setTimeout(() => {
+                            loadCrData();
+                        }, 100);
+                    }
+                };
+
+                container.addEventListener('animationend', handleAnimationEnd);
+
+                setTimeout(() => {
+                    try {
+                        if (style.parentNode) {
+                            document.head.removeChild(style);
+                        }
+                    } catch (error) {
+                        // Cleanup skipped
+                    }
+                }, animationDuration * 1000 + 1000);
+            }, 50);
         }
 
         // === KRAJSKÝ CRAWL LOGIKA ===
