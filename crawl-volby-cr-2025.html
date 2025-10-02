@@ -552,12 +552,10 @@
                     // Debug všechny strany
                     debugLog(`📊 Strana ${index + 1}/${allParties.length}: "${name}", barva: ${color}`);
                 });
-                
-                // Seřadit podle názvu (všechny strany mají 0% - "před volbami")
-                processedParties.sort((a, b) => {
-                    return a.shortName8.localeCompare(b.shortName8);
-                });
-                
+
+                // Seřadit podle procent hlasů (sestupně - od nejvyšší po nejnižší)
+                processedParties.sort((a, b) => (b.votesPercent || 0) - (a.votesPercent || 0));
+
                 crData = {
                     turnout: data.turnout || {},
                     parties: processedParties
