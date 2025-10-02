@@ -1111,12 +1111,8 @@
             loadCrData();     // ČR crawl
             loadRegionsData(); // Krajský crawl
         });
-        
-        // Aktualizovat data každých 5 minut (pro případné změny)
-        setInterval(() => {
-            loadCrData();
-            loadRegionsData();
-        }, 5 * 60 * 1000);
+
+        // Refresh dat se spouští automaticky po dokončení každého crawlu (přes sentinel monitoring)
     </script>
 </body>
 </html>
